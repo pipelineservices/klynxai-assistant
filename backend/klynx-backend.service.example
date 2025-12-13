@@ -1,0 +1,15 @@
+[Unit]
+Description=KLYNX AI Backend (FastAPI + Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/klynxagentent/klynxai-enterprise/backend
+EnvironmentFile=/opt/klynxagentent/klynxai-enterprise/backend/.env
+ExecStart=/opt/klynxagentent/klynxai-enterprise/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

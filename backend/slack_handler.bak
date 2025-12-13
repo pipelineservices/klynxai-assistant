@@ -1,0 +1,57 @@
+import json
+from fastapi import APIRouter, Request, Response
+from slack_sdk import WebClient
+from incident_engine import analyze_cloud_issue
+from app_config import get_settings
+
+slack_router = APIRouter()
+settings = get_settings()
+
+client = WebClient(token=settings.SLACK_BOT_TOKEN)
+
+last_event_ids = set()   # Prevent duplicate replies from Slack retries
+
+
+@slack_router.post("/api/slack/events")
+async def slack_events(request: Request):
+    raw = await request.body()
+
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except:
+        return Response(status_code=200)
+
+    event_id = body.get("event_id")
+    event_type = body.get("type")
+
+    print("===== SLACK EVENT RECEIVED =====")
+    print(body)
+    print("================================")
+
+    # Slack URL verification
+    if event_type == "url_verification":
+        return {"challenge": body.get("challenge")}
+
+    # Ignore duplicate retries
+    if event_id in last_event_ids:
+        return Response(status_code=200)
+    last_event_ids.add(event_id)
+
+    # Handle events
+    if event_type == "event_callback":
+        event = body.get("event", {})
+        if event.get("type") == "app_mention":
+
+            user_message = event.get("text", "")
+            channel = event.get("channel")
+
+            # Run cloud incident analyzer
+            response = analyze_cloud_issue(user_message)
+
+            # Send message back to Slack
+            client.chat_postMessage(
+                channel=channel,
+                text=response
+            )
+
+    return Response(status_code=200)
