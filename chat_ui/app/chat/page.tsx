@@ -8,26 +8,21 @@ import { ChatMessage } from "@/lib/api";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [provider, setProvider] = useState("mock");
+  const [provider, setProvider] = useState("openai");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div
-        style={{
-          padding: "10px",
-          borderBottom: "1px solid #222",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-        }}
-      >
+    <div className="flex flex-col h-screen">
+      <div className="p-3 bg-black text-white flex items-center gap-4">
         <strong>KLYNX Chat</strong>
         <ProviderSelect provider={provider} setProvider={setProvider} />
       </div>
 
       <ChatWindow messages={messages} />
-
-      <ChatInput provider={provider} messages={messages} setMessages={setMessages} />
+      <ChatInput
+        messages={messages}
+        setMessages={setMessages}
+        provider={provider}
+      />
     </div>
   );
 }

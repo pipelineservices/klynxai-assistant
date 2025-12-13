@@ -2,16 +2,23 @@
 
 import { ChatMessage } from "@/lib/api";
 
-type Props = {
-  messages: ChatMessage[];
-};
-
-export default function ChatWindow({ messages }: Props) {
+export default function ChatWindow({ messages }: { messages: ChatMessage[] }) {
   return (
-    <div style={{ flex: 1, overflow: "auto", padding: "16px" }}>
+    <div className="flex-1 overflow-auto p-4 space-y-2 bg-slate-900 text-white">
+      {messages.length === 0 && (
+        <div className="text-gray-400">Start a conversation…</div>
+      )}
+
       {messages.map((m, i) => (
-        <div key={i} style={{ marginBottom: "10px" }}>
-          <strong>{m.role}:</strong> {m.content}
+        <div
+          key={i}
+          className={`p-2 rounded max-w-xl ${
+            m.role === "user"
+              ? "ml-auto bg-blue-600 text-right"
+              : "mr-auto bg-gray-700"
+          }`}
+        >
+          {m.content}
         </div>
       ))}
     </div>

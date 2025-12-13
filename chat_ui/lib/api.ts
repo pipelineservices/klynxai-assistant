@@ -1,75 +1,54 @@
 export type ChatMessage = {
-  role: "system" | "user" | "assistant";
+  role: "user" | "assistant";
   content: string;
 };
 
-type StreamChatArgs = {
+type StreamPayload = {
   provider: string;
   messages: ChatMessage[];
-  onToken: (token: string) => void;
-  onDone?: () => void;
-  onError?: (err: any) => void;
 };
 
-export async function streamChat(args: StreamChatArgs): Promise<void> {
-  const { provider, messages, onToken, onDone, onError } = args;
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_CHAT_BACKEND_URL ||
+  "http://127.0.0.1:8010";
 
-  try {
-    const res = await fetch("/api/chatbackend/chat/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider, messages }),
-    });
+export async function streamChat(
+  payload: StreamPayload,
+  onToken: (token: string) => void,
+  onDone?: () => void,
+) {
+  const res = await fetch(`${BACKEND_URL}/api/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`streamChat failed: ${res.status} ${txt}`);
-    }
+  if (!res.body) {
+    throw new Error("No response body from chat backend");
+  }
 
-    const reader = res.body?.getReader();
-    if (!reader) throw new Error("No response body reader");
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
 
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
 
-      buffer += decoder.decode(value, { stream: true });
-
-      // SSE chunks separated by \n\n
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() ?? "";
-
-      for (const part of parts) {
-        const line = part.trim();
-        if (!line) continue;
-
-        // Expected: "data: ..."
-        const dataLine = line
-          .split("\n")
-          .map((l) => l.trim())
-          .find((l) => l.startsWith("data:"));
-
-        if (!dataLine) continue;
-
-        const token = dataLine.replace(/^data:\s?/, "");
-
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const token = line.replace("data: ", "").trim();
         if (token === "[DONE]") {
           onDone?.();
           return;
         }
-
-        // allow server error tokens to show in UI
         onToken(token);
       }
     }
-
-    onDone?.();
-  } catch (err) {
-    onError?.(err);
-    onDone?.();
   }
+
+  onDone?.();
 }
 

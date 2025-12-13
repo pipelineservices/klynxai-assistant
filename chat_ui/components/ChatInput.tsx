@@ -1,60 +1,71 @@
 "use client";
 
 import { useState } from "react";
-import { ChatMessage, streamChat } from "@/lib/api";
+import { streamChat, ChatMessage } from "@/lib/api";
 
-type Props = {
-  provider: string;
+export default function ChatInput({
+  messages,
+  setMessages,
+  provider,
+}: {
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-};
-
-export default function ChatInput({ provider, messages, setMessages }: Props) {
+  provider: string;
+}) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
   async function send() {
-    if (!input.trim() || sending) return;
+    if (!input.trim()) return;
 
-    const userMessage: ChatMessage = { role: "user", content: input };
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: input,
+    };
+
+    const assistantMessage: ChatMessage = {
+      role: "assistant",
+      content: "",
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setInput("");
     setSending(true);
 
-    // Add user + placeholder assistant
-    setMessages((prev) => [...prev, userMessage, { role: "assistant", content: "" }]);
-
-    await streamChat({
-      provider,
-      messages: [...messages, userMessage],
-      onToken: (token: string) => {
+    await streamChat(
+      {
+        provider,
+        messages: [...messages, userMessage],
+      },
+      (token) => {
         setMessages((prev) => {
           const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last && last.role === "assistant") {
-            updated[updated.length - 1] = { ...last, content: last.content + token };
-          }
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: updated[updated.length - 1].content + token,
+          };
           return updated;
         });
       },
-      onDone: () => setSending(false),
-      onError: () => setSending(false),
-    });
+      () => setSending(false),
+    );
   }
 
   return (
-    <div style={{ display: "flex", padding: "10px", gap: "8px", borderTop: "1px solid #222" }}>
+    <div className="p-3 flex gap-2 bg-slate-800">
       <input
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Ask anything..."
-        style={{ flex: 1 }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") send();
-        }}
+        className="flex-1 p-2 rounded text-black"
         disabled={sending}
       />
-      <button onClick={send} disabled={sending}>
-        {sending ? "..." : "Send"}
+      <button
+        onClick={send}
+        disabled={sending}
+        className="bg-blue-600 text-white px-4 rounded"
+      >
+        Send
       </button>
     </div>
   );
