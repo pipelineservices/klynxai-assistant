@@ -1,0 +1,36 @@
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from openai import OpenAI
+import os
+import json
+
+router = APIRouter()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+
+@router.post("/api/chat/stream")
+async def chat_stream(request: Request):
+    body = await request.json()
+    messages = body.get("messages", [])
+
+    def event_generator():
+        stream = client.responses.stream(
+            model=MODEL,
+            input=messages,
+        )
+
+        with stream as response:
+            for event in response:
+                if event.type == "response.output_text.delta":
+                    token = event.delta
+                    yield f"data: {json.dumps({'token': token})}\n\n"
+
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream"
+    )
+

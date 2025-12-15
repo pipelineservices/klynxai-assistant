@@ -1,0 +1,74 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+export default function ChatInput({
+  onSend,
+  disabled,
+}: {
+  onSend: (text: string) => Promise<void> | void;
+  disabled?: boolean;
+}) {
+  const [text, setText] = useState("");
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    // keep focus in input for faster use
+    ref.current?.focus();
+  }, []);
+
+  async function handleSend() {
+    const t = text.trim();
+    if (!t || disabled) return;
+    setText("");
+    await onSend(t);
+    ref.current?.focus();
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <textarea
+        ref={ref}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Type a message..."
+        style={{
+          flex: 1,
+          width: "100%",
+          resize: "none",
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          padding: 12,
+          fontSize: 14,
+          outline: "none",
+        }}
+        onKeyDown={(e) => {
+          // Enter sends, Shift+Enter newline
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            void handleSend();
+          }
+        }}
+      />
+      <button
+        onClick={() => void handleSend()}
+        disabled={disabled || text.trim().length === 0}
+        style={{
+          marginTop: 12,
+          width: "100%",
+          height: 44,
+          borderRadius: 10,
+          border: "none",
+          background: "#2563eb",
+          color: "white",
+          fontWeight: 600,
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled || text.trim().length === 0 ? 0.6 : 1,
+        }}
+      >
+        Send
+      </button>
+    </div>
+  );
+}
+

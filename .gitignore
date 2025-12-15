@@ -1,16 +1,21 @@
-# Python
-__pycache__/
-*.pyc
-.venv/
-.env
+# Backups & archives
+_backups/
+restore_tmp/
+*.tar.gz
+*.zip
+
+# Databases
+*.db
 
 # Node / Next.js
 node_modules/
 .next/
-out/
 
-# OS
-.DS_Store
+# Python
+__pycache__/
+.venv/
 
-# Logs
-*.log
+# Env files
+.env
+.env.local
+
