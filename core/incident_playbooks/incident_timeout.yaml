@@ -1,0 +1,9 @@
+match:
+  - timeout
+  - latency
+severity: P2
+actions:
+  - "Inspect upstream service"
+  - "Check load balancer"
+  - "Inspect DB latency"
+

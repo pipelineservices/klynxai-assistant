@@ -1,0 +1,20 @@
+# venv
+.venv/
+__pycache__/
+*.pyc
+
+# env
+.env
+.env.*
+
+# logs
+*.log
+
+# editor
+.vscode/
+.idea/
+
+# mac/windows
+.DS_Store
+Thumbs.db
+

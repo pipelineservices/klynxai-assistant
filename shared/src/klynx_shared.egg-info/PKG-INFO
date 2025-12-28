@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: klynx-shared
+Version: 0.1.0
+Summary: Shared contracts, enums, and models for KLYNX AI Agent platform
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.6
+
+# shared
+
+Shared Python package for KLYNX AI Agent.
+
+Includes:
+- Enums (severity, status, source)
+- Contracts for chat/slack/otel/incident
+- Common models (message, action, incident, telemetry)
+
+Install (editable):
+```bash
+cd /opt/klynxaiagent/core
+source .venv/bin/activate
+pip install -e ../shared
+

@@ -1,0 +1,10 @@
+match:
+  - cpu
+  - high
+severity: P1
+actions:
+  - "Check top / htop"
+  - "Scale instance or ASG"
+  - "Check runaway process"
+  - "Inspect recent deploys"
+

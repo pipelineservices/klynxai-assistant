@@ -1,0 +1,21 @@
+[Unit]
+Description=KLYNX Slack Agent
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/klynxaiagent/slack
+EnvironmentFile=/opt/klynxaiagent/slack/.env
+ExecStart=/opt/klynxaiagent/slack/.venv/bin/uvicorn app:app --host 0.0.0.0 --port 9100 --log-level info --access-log
+Restart=always
+RestartSec=3
+Environment=OTEL_SERVICE_NAME=klynx-slack
+Environment=OTEL_TRACES_EXPORTER=logging
+Environment=OTEL_METRICS_EXPORTER=none
+Environment=OTEL_LOGS_EXPORTER=none
+Environment=OTEL_RESOURCE_ATTRIBUTES=deployment.environment=dev,service.version=1.0.0
+
+[Install]
+WantedBy=multi-user.target
+

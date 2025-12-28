@@ -1,0 +1,30 @@
+# secrets
+.env
+*.env
+.env.*
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# backups
+*.bak*
+*.old
+
+# runtime
+data/
+run/
+logs/
+
+# slack
+slack/*.env
+
+# OS
+.DS_Store
+
+# venv
+.venv/
+
