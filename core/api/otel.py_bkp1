@@ -1,0 +1,37 @@
+from fastapi import APIRouter
+from pydantic import BaseModel
+import time
+import uuid
+
+router = APIRouter(prefix="/api/otel", tags=["otel"])
+
+# In-memory store (demo only)
+OTEL_EVENTS = []
+
+class OTelIngest(BaseModel):
+    service: str
+    severity: str
+    message: str
+    trace_id: str
+    raw: dict
+
+@router.post("/ingest")
+async def ingest_otel(event: OTelIngest):
+    record = {
+        "id": str(uuid.uuid4()),
+        "ts": time.time(),
+        **event.model_dump(),
+    }
+
+    OTEL_EVENTS.append(record)
+
+    return {
+        "status": "ingested",
+        "trace_id": event.trace_id,
+        "event_id": record["id"],
+    }
+
+@router.get("/events")
+async def list_events():
+    return OTEL_EVENTS[-50:]
+

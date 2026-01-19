@@ -1,0 +1,273 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+interface Message {
+  role: Role;
+  content: string;
+}
+
+interface Chat {
+  id: string;
+  title: string;
+  messages: Message[];
+}
+
+/* ---------------- Utils ---------------- */
+
+function generateId() {
+  return (
+    Date.now().toString(36) +
+    Math.random().toString(36).substring(2, 10)
+  );
+}
+
+/* ---------------- Helpers ---------------- */
+
+function smartAppend(prev: string, token: string) {
+  if (!prev) return token;
+  if (token.startsWith("\n")) return prev + token;
+  if (/^[.,!?;:)]/.test(token)) return prev + token;
+  if (/[([{$]$/.test(prev)) return prev + token;
+  return prev + " " + token;
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamControllerRef = useRef<AbortController | null>(null);
+
+  const activeChat = chats.find((c) => c.id === activeChatId) || null;
+
+  useEffect(() => {
+    if (chats.length === 0) createNewChat();
+  }, []);
+
+  function resetStreamingState() {
+    streamControllerRef.current?.abort();
+    streamControllerRef.current = null;
+    setIsStreaming(false);
+  }
+
+  function createNewChat() {
+    resetStreamingState();
+    const id = generateId();
+    setChats((prev) => [{ id, title: "New chat", messages: [] }, ...prev]);
+    setActiveChatId(id);
+    setInput("");
+  }
+
+  function deleteChat(id: string) {
+    resetStreamingState();
+    setChats((prev) => prev.filter((c) => c.id !== id));
+    if (id === activeChatId) setActiveChatId(null);
+  }
+
+  async function sendMessage(regenerate = false) {
+    if (!activeChat) return;
+    if (!regenerate && !input.trim()) return;
+    if (isStreaming) return;
+
+    const userMessage: Message = { role: "user", content: input };
+
+    const messages = regenerate
+      ? activeChat.messages
+      : [...activeChat.messages, userMessage];
+
+    if (!regenerate) {
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === activeChat.id
+            ? { ...c, messages: [...c.messages, userMessage] }
+            : c
+        )
+      );
+    }
+
+    setInput("");
+    setIsStreaming(true);
+
+    const controller = new AbortController();
+    streamControllerRef.current = controller;
+
+    // assistant placeholder
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === activeChat.id
+          ? { ...c, messages: [...c.messages, { role: "assistant", content: "" }] }
+          : c
+      )
+    );
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ messages }),
+      });
+
+      if (!res.body) throw new Error("No stream");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+
+          const token = line.replace(/^data:\s*/, "");
+          if (!token || token === "[DONE]") continue;
+
+          setChats((prev) =>
+            prev.map((c) => {
+              if (c.id !== activeChat.id) return c;
+
+              const msgs = [...c.messages];
+              const last = msgs[msgs.length - 1];
+
+              msgs[msgs.length - 1] = {
+                ...last,
+                content: smartAppend(last.content, token),
+              };
+
+              return { ...c, messages: msgs };
+            })
+          );
+        }
+      }
+    } catch (err: any) {
+      if (err.name !== "AbortError") console.error(err);
+    } finally {
+      setIsStreaming(false);
+      streamControllerRef.current = null;
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
+      <div style={{ width: 240, borderRight: "1px solid #ddd", padding: 8 }}>
+        <button onClick={createNewChat}>+ New chat</button>
+
+        {chats.map((chat) => (
+          <div
+            key={chat.id}
+            style={{
+              padding: 6,
+              cursor: "pointer",
+              background: chat.id === activeChatId ? "#e6f0ff" : "transparent",
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+            onClick={() => {
+              resetStreamingState();
+              setActiveChatId(chat.id);
+            }}
+          >
+            <span>{chat.title}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteChat(chat.id);
+              }}
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Main */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 24,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: 720 }}>
+            {activeChat?.messages.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  background: m.role === "assistant" ? "#f1f3f4" : "#2563eb",
+                  color: m.role === "assistant" ? "#000" : "#fff",
+                  padding: 16,
+                  borderRadius: 12,
+                  marginBottom: 12,
+                }}
+              >
+                {m.content}
+
+                {m.role === "assistant" && (
+                  <div style={{ marginTop: 8 }}>
+                    <button onClick={() => navigator.clipboard.writeText(m.content)}>
+                      📋 Copy
+                    </button>
+                    <button onClick={() => sendMessage(true)}>
+                      🔁 Regenerate
+                    </button>
+                    {isStreaming && (
+                      <button
+                        onClick={() => {
+                          streamControllerRef.current?.abort();
+                          setIsStreaming(false);
+                        }}
+                      >
+                        ⏹ Stop
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Input */}
+        <div style={{ padding: 12, borderTop: "1px solid #ddd" }}>
+          <textarea
+            value={input}
+            placeholder="Ask anything..."
+            disabled={isStreaming}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            style={{ width: "100%", height: 80 }}
+          />
+
+          <button
+            onClick={() => sendMessage()}
+            disabled={isStreaming || !input.trim()}
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

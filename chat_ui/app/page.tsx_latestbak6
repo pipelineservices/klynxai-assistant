@@ -1,0 +1,320 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeAssistantText(text: string) {
+  return text
+    .replace(/\\\[/g, "$$")
+    .replace(/\\\]/g, "$$")
+    .replace(/\\\(/g, "$")
+    .replace(/\\\)/g, "$")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.length) {
+        setSessions(parsed);
+        setActiveId(parsed[0].id);
+        return;
+      }
+    }
+    const first = { id: safeId(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollTo({
+      top: chatScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, streaming]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  /* ---------- Actions ---------- */
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      if (!next.length) {
+        const fresh = { id: safeId(), title: "New chat", messages: [] };
+        setActiveId(fresh.id);
+        return [fresh];
+      }
+      if (id === activeId) setActiveId(next[0].id);
+      return next;
+    });
+  }
+
+  function copyText(text: string) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+
+  function regenerate(index: number) {
+    if (!active) return;
+    for (let i = index - 1; i >= 0; i--) {
+      if (active.messages[i].role === "user") {
+        send(active.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  function stopStreaming() {
+    abortRef.current?.abort();
+    setStreaming(false);
+  }
+
+  /* ---------- Send ---------- */
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || streaming || !active) return;
+
+    setInput("");
+    setStreaming(true);
+
+    const userMsg: Message = { role: "user", content: text };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, userMsg, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    abortRef.current = new AbortController();
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({ messages: [...active.messages, userMsg] }),
+      });
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        if (chunk.includes("[DONE]")) break;
+
+        buffer += chunk.replace(/^data:\s*/gm, "");
+
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id !== activeId) return s;
+            const msgs = [...s.messages];
+            msgs[msgs.length - 1] = {
+              role: "assistant",
+              content: buffer,
+            };
+            return { ...s, messages: msgs };
+          })
+        );
+      }
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
+      <aside style={{ width: 260, padding: 12, borderRight: "1px solid #e5e7eb" }}>
+        <button
+          onClick={() => {
+            const id = safeId();
+            setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+            setActiveId(id);
+          }}
+        >
+          + New chat
+        </button>
+
+        {sessions.map((s) => (
+          <div
+            key={s.id}
+            onClick={() => setActiveId(s.id)}
+            style={{
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 8,
+              background: s.id === activeId ? "#2563eb" : "transparent",
+              color: s.id === activeId ? "#fff" : "#000",
+              display: "flex",
+              justifyContent: "space-between",
+              cursor: "pointer",
+            }}
+          >
+            <span>{s.title}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteChat(s.id);
+              }}
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </aside>
+
+      {/* Chat */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div ref={chatScrollRef} style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+          {active?.messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                maxWidth: 820,
+                marginBottom: 16,
+                padding: 14,
+                borderRadius: 12,
+                background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                color: m.role === "assistant" ? "#000" : "#fff",
+                marginLeft: m.role === "assistant" ? 0 : "auto",
+                position: "relative",
+              }}
+            >
+              {m.role === "assistant" ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {normalizeAssistantText(m.content)}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
+
+              {/* 🔹 Hover Toolbar */}
+              {m.role === "assistant" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: -26,
+                    right: 10,
+                    display: "flex",
+                    gap: 6,
+                    opacity: 0,
+                  }}
+                  className="hover-toolbar"
+                >
+                  <button onClick={() => copyText(m.content)}>📋</button>
+                  <button onClick={() => regenerate(i)}>🔄</button>
+                  {streaming && <button onClick={stopStreaming}>⏹</button>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          style={{ padding: 12, borderTop: "1px solid #e5e7eb" }}
+        >
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={2}
+            style={{ width: "100%", padding: 10 }}
+            placeholder="Ask anything…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+          <div style={{ textAlign: "right", marginTop: 6 }}>
+            <button type="submit" disabled={streaming}>
+              Send
+            </button>
+          </div>
+        </form>
+      </main>
+
+      {/* Hover CSS */}
+      <style>{`
+        .hover-toolbar {
+          transition: opacity 0.15s ease;
+        }
+        div:hover > .hover-toolbar {
+          opacity: 1;
+        }
+      `}</style>
+    </div>
+  );
+}
+

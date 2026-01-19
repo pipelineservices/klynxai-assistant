@@ -1,0 +1,972 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Reactions = {
+  up?: boolean;
+  down?: boolean;
+  star?: boolean;
+};
+
+type Message = {
+  role: Role;
+  content: string;
+  reactions?: Reactions; // backward compatible (old sessions won't have this)
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+/** UI-only attachments (NO backend payload changes in this file) */
+type Attachment = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  preview?: string; // image dataURL for preview
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+const THEME_KEY = "klynx_theme"; // "light" | "dark"
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeAssistantText(text: string) {
+  return (text || "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function copyText(text: string) {
+  navigator.clipboard.writeText(text || "");
+}
+
+function buildRequestMessages(history: Message[], newUserText: string): Message[] {
+  const cleaned = history.filter((m) => (m.content || "").trim().length > 0);
+  return [...cleaned, { role: "user", content: newUserText }];
+}
+
+/**
+ * Streaming responses may come as:
+ *  - raw text chunks
+ *  - SSE lines: "data: ...\n\n"
+ * This normalizes both.
+ */
+function extractStreamingText(chunk: string): string {
+  if (!chunk) return "";
+  // If it looks like SSE, parse lines.
+  if (chunk.includes("data:")) {
+    const lines = chunk.split("\n");
+    const parts: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const payload = trimmed.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      // Some servers JSON-wrap {token:""} — try parse, else use raw
+      try {
+        const obj = JSON.parse(payload);
+        if (typeof obj === "string") parts.push(obj);
+        else if (obj && typeof obj.token === "string") parts.push(obj.token);
+        else if (obj && typeof obj.text === "string") parts.push(obj.text);
+        else parts.push(payload);
+      } catch {
+        parts.push(payload);
+      }
+    }
+    return parts.join("");
+  }
+  return chunk;
+}
+
+/* ✅ helper: build attachments payload for backend */
+function buildAttachmentPayload(attachments: Attachment[]) {
+  return attachments.map((a) => ({
+    name: a.name,
+    type: a.type,
+    size: a.size,
+    data: a.preview && a.type.startsWith("image/") ? a.preview.split(",")[1] : undefined,
+  }));
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+
+  const [isBusy, setIsBusy] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Avoid stale state bugs
+  const sessionsRef = useRef<ChatSession[]>([]);
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // Cancel streaming/typing
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const typingAbortRef = useRef<{ aborted: boolean } | null>(null);
+
+  /* ---------- Theme (dark/light) ---------- */
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const saved = (typeof window !== "undefined" && localStorage.getItem(THEME_KEY)) || "";
+    if (saved === "dark" || saved === "light") {
+      setTheme(saved);
+      return;
+    }
+    // default from system
+    const prefersDark =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setTheme(prefersDark ? "dark" : "light");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((p) => (p === "dark" ? "light" : "dark"));
+  }
+
+  const colors = useMemo(() => {
+    const isDark = theme === "dark";
+    return {
+      isDark,
+      pageBg: isDark ? "#0b1220" : "#ffffff",
+      sidebarBg: isDark ? "#0f172a" : "#f9fafb",
+      panelBorder: isDark ? "#1f2937" : "#e5e7eb",
+      text: isDark ? "#e5e7eb" : "#111827",
+      muted: isDark ? "#94a3b8" : "#6b7280",
+      cardUser: "#2563eb",
+      cardAssistant: isDark ? "#111827" : "#e5e7eb",
+      inputBg: isDark ? "#0b1220" : "#ffffff",
+      chipBg: isDark ? "#0b1220" : "#f9fafb",
+      chipBorder: isDark ? "#334155" : "#d1d5db",
+      btnBg: isDark ? "#111827" : "#ffffff",
+      btnBorder: isDark ? "#334155" : "#d1d5db",
+      headerBg: isDark ? "#0b1220" : "#ffffff",
+    };
+  }, [theme]);
+
+  /* ---------- Attachments UI-only ---------- */
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    for (const f of files) {
+      const id = safeId();
+
+      if (f.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setAttachments((prev) => [
+            ...prev,
+            { id, name: f.name, type: f.type, size: f.size, preview: String(reader.result || "") },
+          ]);
+        };
+        reader.readAsDataURL(f);
+      } else {
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id,
+            name: f.name,
+            type: f.type || "application/octet-stream",
+            size: f.size,
+          },
+        ]);
+      }
+    }
+
+    // allow selecting same file again
+    e.target.value = "";
+  }
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {}
+    }
+    const first: ChatSession = { id: safeId(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, isStreaming, isTyping]);
+
+  const active = useMemo(() => sessions.find((s) => s.id === activeId), [sessions, activeId]);
+  const activeMessages = active?.messages ?? [];
+  const isLanding = activeMessages.length === 0;
+
+  /* ---------- Session actions ---------- */
+
+  function newChat() {
+    const id = safeId();
+    setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+    setActiveId(id);
+    // UX: clear composer chips on a fresh chat
+    setAttachments([]);
+    setInput("");
+  }
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      const next = remaining.length > 0 ? remaining : [{ id: safeId(), title: "New chat", messages: [] }];
+
+      if (id === activeId) {
+        setActiveId(next[0].id);
+        setAttachments([]);
+        setInput("");
+      }
+      return next;
+    });
+  }
+
+  function stop() {
+    // Stop stream
+    if (streamAbortRef.current) {
+      streamAbortRef.current.abort();
+      streamAbortRef.current = null;
+    }
+    // Stop typing
+    if (typingAbortRef.current) typingAbortRef.current.aborted = true;
+    typingAbortRef.current = null;
+
+    setIsStreaming(false);
+    setIsTyping(false);
+  }
+
+  function regenerate(index: number) {
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    for (let i = index - 1; i >= 0; i--) {
+      if (current.messages[i]?.role === "user") {
+        void send(current.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  function toggleReaction(messageIndex: number, key: keyof Reactions) {
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeId) return s;
+        const msgs = [...s.messages];
+        const m = msgs[messageIndex];
+        if (!m || m.role !== "assistant") return s;
+
+        const current = m.reactions || {};
+        // Keep 👍 and 👎 mutually exclusive
+        if (key === "up") {
+          const nextUp = !current.up;
+          msgs[messageIndex] = {
+            ...m,
+            reactions: { ...current, up: nextUp, down: nextUp ? false : current.down },
+          };
+        } else if (key === "down") {
+          const nextDown = !current.down;
+          msgs[messageIndex] = {
+            ...m,
+            reactions: { ...current, down: nextDown, up: nextDown ? false : current.up },
+          };
+        } else {
+          msgs[messageIndex] = { ...m, reactions: { ...current, star: !current.star } };
+        }
+        return { ...s, messages: msgs };
+      })
+    );
+  }
+
+  /* ---------- Fallback typing (used only if /api/chat/stream fails) ---------- */
+
+  async function typeAssistantReply(fullText: string) {
+    stop();
+    setIsTyping(true);
+
+    const abortFlag = { aborted: false };
+    typingAbortRef.current = abortFlag;
+
+    const parts = fullText.split(/(\s+)/).filter((x) => x.length > 0);
+    let built = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      if (abortFlag.aborted) break;
+      built += parts[i];
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          if (msgs.length === 0) return s;
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], role: "assistant", content: built };
+          return { ...s, messages: msgs };
+        })
+      );
+
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 12));
+    }
+
+    setIsTyping(false);
+    typingAbortRef.current = null;
+  }
+
+  /* ---------- Send ---------- */
+
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || isBusy || isStreaming || isTyping) return;
+
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    setInput("");
+    setIsBusy(true);
+
+    const requestMessages = buildRequestMessages(current.messages, text);
+
+    // Add user + placeholder assistant
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, { role: "user", content: text }, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    // 1) Try real streaming first
+    try {
+      stop(); // ensure no previous stream is running
+      setIsStreaming(true);
+
+      const ac = new AbortController();
+      streamAbortRef.current = ac;
+
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: requestMessages,
+          attachments: buildAttachmentPayload(attachments),
+        }),
+        signal: ac.signal,
+      });
+
+      if (!res.ok) throw new Error(`/api/chat/stream HTTP ${res.status}`);
+      if (!res.body) throw new Error("/api/chat/stream empty body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let built = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const rawChunk = decoder.decode(value, { stream: true });
+        const textChunk = extractStreamingText(rawChunk);
+        if (!textChunk) continue;
+
+        built += textChunk;
+
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id !== activeId) return s;
+            const msgs = [...s.messages];
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], role: "assistant", content: built };
+            return { ...s, messages: msgs };
+          })
+        );
+      }
+
+      setIsStreaming(false);
+      streamAbortRef.current = null;
+      setIsBusy(false);
+
+      // clear attachments ONLY after successful send
+      setAttachments([]);
+      return;
+    } catch (e: any) {
+      setIsStreaming(false);
+      streamAbortRef.current = null;
+      // Fall through to /api/chat
+    }
+
+    // 2) Fallback: normal /api/chat
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: requestMessages,
+          attachments: buildAttachmentPayload(attachments),
+        }),
+      });
+
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        const detail = (data && (data.detail || data.error)) || raw || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+
+      const reply = data && data.reply ? String(data.reply) : "⚠️ Empty reply from server";
+      await typeAssistantReply(reply);
+
+      // clear attachments ONLY after successful send
+      setAttachments([]);
+    } catch (e: any) {
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          msgs[msgs.length - 1] = {
+            ...msgs[msgs.length - 1],
+            role: "assistant",
+            content: `⚠️ Failed to fetch: ${e?.message || String(e)}`,
+          };
+          return { ...s, messages: msgs };
+        })
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  /* ---------- Composer (Perplexity-like bar) ---------- */
+
+  const Composer = ({ variant }: { variant: "landing" | "bottom" }) => {
+    const isBig = variant === "landing";
+
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+        style={{
+          width: "100%",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 900, margin: "0 auto", position: "relative" }}>
+          {/* Hidden file input (single source of truth) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.txt,.log,.json"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+
+          {/* Attachments chips */}
+          {attachments.length > 0 && (
+            <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+              {attachments.map((a) => (
+                <div
+                  key={a.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    border: `1px solid ${colors.chipBorder}`,
+                    borderRadius: 999,
+                    padding: "6px 10px",
+                    background: colors.chipBg,
+                    color: colors.text,
+                    fontSize: 13,
+                  }}
+                >
+                  {a.preview ? (
+                    <img
+                      src={a.preview}
+                      alt={a.name}
+                      style={{ width: 26, height: 26, objectFit: "cover", borderRadius: 999 }}
+                    />
+                  ) : (
+                    <span>📎</span>
+                  )}
+                  <span style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {a.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(a.id)}
+                    title="Remove"
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: colors.text,
+                      cursor: "pointer",
+                      fontWeight: 900,
+                      fontSize: 16,
+                      lineHeight: "16px",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Perplexity-style input container */}
+          <div
+            style={{
+              border: `1px solid ${colors.panelBorder}`,
+              background: colors.inputBg,
+              borderRadius: 16,
+              boxShadow: colors.isDark ? "none" : "0 10px 30px rgba(0,0,0,0.06)",
+              padding: isBig ? 14 : 10,
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 10,
+            }}
+          >
+            {/* Left actions (icons) */}
+            <button
+              type="button"
+              onClick={openFilePicker}
+              title="Attach"
+              style={{
+                border: `1px solid ${colors.btnBorder}`,
+                background: colors.btnBg,
+                color: colors.text,
+                borderRadius: 12,
+                padding: isBig ? "10px 12px" : "8px 10px",
+                cursor: "pointer",
+                fontWeight: 900,
+              }}
+            >
+              +
+            </button>
+
+            <div style={{ flex: 1 }}>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={isBig ? 3 : 2}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  background: "transparent",
+                  color: colors.text,
+                  outline: "none",
+                  resize: "none",
+                  fontSize: isBig ? 16 : 15,
+                  lineHeight: "1.4",
+                  paddingTop: 4,
+                }}
+                placeholder="Ask klynxai anything…"
+                disabled={isBusy || isStreaming || isTyping}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send();
+                  }
+                }}
+              />
+              {variant === "landing" ? (
+                <div style={{ marginTop: 10, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                  {["Latest News", "Troubleshoot", "Summarize", "Local"].map((label) => (
+                    <div
+                      key={label}
+                      style={{
+                        border: `1px solid ${colors.chipBorder}`,
+                        background: colors.chipBg,
+                        color: colors.text,
+                        borderRadius: 999,
+                        padding: "8px 14px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        opacity: 0.9,
+                      }}
+                    >
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isBusy || isStreaming || isTyping || !input.trim()}
+              style={{
+                border: "none",
+                background:
+                  isBusy || isStreaming || isTyping || !input.trim()
+                    ? colors.isDark
+                      ? "#334155"
+                      : "#e5e7eb"
+                    : "#2563eb",
+                color: "#fff",
+                borderRadius: 12,
+                padding: isBig ? "10px 14px" : "8px 12px",
+                cursor: isBusy || isStreaming || isTyping || !input.trim() ? "not-allowed" : "pointer",
+                fontWeight: 800,
+              }}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </form>
+    );
+  };
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div style={{ display: "flex", height: "100vh", background: colors.pageBg }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: 280,
+          padding: 12,
+          borderRight: `1px solid ${colors.panelBorder}`,
+          background: colors.sidebarBg,
+          color: colors.text,
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <button
+            onClick={newChat}
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: `1px solid ${colors.btnBorder}`,
+              background: colors.btnBg,
+              color: colors.text,
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            + New chat
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            title="Toggle dark/light"
+            style={{
+              width: 44,
+              padding: "10px 0",
+              borderRadius: 10,
+              border: `1px solid ${colors.btnBorder}`,
+              background: colors.btnBg,
+              color: colors.text,
+              cursor: "pointer",
+              fontWeight: 900,
+            }}
+          >
+            {colors.isDark ? "☀️" : "🌙"}
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                background: s.id === activeId ? "#2563eb" : colors.btnBg,
+                color: s.id === activeId ? "#fff" : colors.text,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                border: `1px solid ${colors.panelBorder}`,
+                cursor: "pointer",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {s.title || "New chat"}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(s.id);
+                }}
+                title="Delete chat"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.35)",
+                  background: s.id === activeId ? "rgba(255,255,255,0.15)" : colors.isDark ? "#0b1220" : "#f3f4f6",
+                  color: s.id === activeId ? "#fff" : colors.text,
+                  borderRadius: 8,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Perplexity-like top header */}
+        <header
+          style={{
+            height: 60,
+            borderBottom: `1px solid ${colors.panelBorder}`,
+            background: colors.headerBg,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: colors.text,
+            fontWeight: 900,
+            fontSize: 28,
+            letterSpacing: 0.5,
+          }}
+        >
+          klynxai
+        </header>
+
+        {/* Landing mode (Perplexity-style center bar) */}
+        {isLanding ? (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
+              padding: 24,
+              background: colors.pageBg,
+            }}
+          >
+            <div style={{ width: "100%", maxWidth: 1000, marginTop: 90 }}>
+              <div style={{ textAlign: "center", color: colors.text, marginBottom: 18 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, opacity: 0.9 }}>Ask anything</div>
+                <div style={{ marginTop: 6, fontSize: 13, color: colors.muted }}>
+                  Press Enter to send • Shift+Enter for new line • Attach files with +
+                </div>
+              </div>
+
+              <Composer variant="landing" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Messages */}
+            <div
+              ref={scrollRef}
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: 24,
+                background: colors.pageBg,
+                color: colors.text,
+              }}
+            >
+              <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                {activeMessages.map((m, i) => {
+                  const isLast = i === activeMessages.length - 1;
+                  const showStop = isLast && m.role === "assistant" && (isStreaming || isTyping);
+                  const rx = m.reactions || {};
+
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        maxWidth: 900,
+                        marginBottom: 18,
+                        padding: 16,
+                        borderRadius: 14,
+                        background: m.role === "assistant" ? colors.cardAssistant : colors.cardUser,
+                        color: m.role === "assistant" ? colors.text : "#fff",
+                        marginLeft: m.role === "assistant" ? 0 : "auto",
+                        boxShadow: m.role === "assistant" ? "0 1px 0 rgba(0,0,0,0.04)" : "none",
+                        border: m.role === "assistant" ? `1px solid ${colors.panelBorder}` : "none",
+                      }}
+                    >
+                      {m.role === "assistant" ? (
+                        <>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeAssistantText(m.content)}</ReactMarkdown>
+
+                          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                            <button
+                              onClick={() => copyText(m.content)}
+                              style={{
+                                border: `1px solid ${colors.btnBorder}`,
+                                background: colors.btnBg,
+                                color: colors.text,
+                                borderRadius: 10,
+                                padding: "6px 10px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              📋 Copy
+                            </button>
+
+                            <button
+                              onClick={() => regenerate(i)}
+                              style={{
+                                border: `1px solid ${colors.btnBorder}`,
+                                background: colors.btnBg,
+                                color: colors.text,
+                                borderRadius: 10,
+                                padding: "6px 10px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              🔄 Regenerate
+                            </button>
+
+                            {showStop ? (
+                              <button
+                                onClick={stop}
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                🔥 Stop
+                              </button>
+                            ) : null}
+
+                            <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => toggleReaction(i, "up")}
+                                title="Thumbs up"
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: rx.up ? (colors.isDark ? "#1d4ed8" : "#dbeafe") : colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                👍
+                              </button>
+                              <button
+                                onClick={() => toggleReaction(i, "down")}
+                                title="Thumbs down"
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: rx.down ? (colors.isDark ? "#7f1d1d" : "#fee2e2") : colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                👎
+                              </button>
+                              <button
+                                onClick={() => toggleReaction(i, "star")}
+                                title="Star"
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: rx.star ? (colors.isDark ? "#854d0e" : "#fef9c3") : colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                }}
+                              >
+                                ⭐
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        m.content
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom composer (Perplexity-like bar) */}
+            <div
+              style={{
+                padding: 16,
+                borderTop: `1px solid ${colors.panelBorder}`,
+                background: colors.pageBg,
+              }}
+            >
+              <Composer variant="bottom" />
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+

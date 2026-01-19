@@ -1,0 +1,85 @@
+@import "katex/dist/katex.min.css";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.sidebar {
+  width: 260px;
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.new-btn {
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+}
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chat-item {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.chat-item:hover {
+  background: #e5e7eb;
+}
+
+.chat-item.active {
+  background: #dbeafe;
+  font-weight: 500;
+}
+
+.input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.input-bar textarea {
+  flex: 1;
+  resize: none;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  height: 44px;
+}
+
+.input-bar button {
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+.input-bar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

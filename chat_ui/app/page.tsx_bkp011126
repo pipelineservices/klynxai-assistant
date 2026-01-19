@@ -1,0 +1,472 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeAssistantText(text: string) {
+  return (text || "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function copyText(text: string) {
+  navigator.clipboard.writeText(text || "");
+}
+
+/**
+ * Build messages to send to backend safely.
+ * - keeps both user+assistant history
+ * - removes empty placeholder assistant messages
+ * - ensures last message is the new user message
+ */
+function buildRequestMessages(history: Message[], newUserText: string): Message[] {
+  const cleaned = history.filter((m) => (m.content || "").trim().length > 0);
+  return [...cleaned, { role: "user", content: newUserText }];
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+
+  const [isBusy, setIsBusy] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ✅ ALWAYS use latest sessions from a ref to avoid stale state bugs
+  const sessionsRef = useRef<ChatSession[]>([]);
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // Typing animation cancellation
+  const typingAbortRef = useRef<{ aborted: boolean } | null>(null);
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {}
+    }
+    const first: ChatSession = { id: safeId(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, isTyping]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  const activeMessages = active?.messages ?? [];
+
+  /* ---------- Actions ---------- */
+
+  function newChat() {
+    const id = safeId();
+    setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+    setActiveId(id);
+  }
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      const next =
+        remaining.length > 0
+          ? remaining
+          : [{ id: safeId(), title: "New chat", messages: [] }];
+
+      if (id === activeId) setActiveId(next[0].id);
+      return next;
+    });
+  }
+
+  function stopTyping() {
+    if (typingAbortRef.current) typingAbortRef.current.aborted = true;
+    typingAbortRef.current = null;
+    setIsTyping(false);
+  }
+
+  function regenerate(index: number) {
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    for (let i = index - 1; i >= 0; i--) {
+      if (current.messages[i]?.role === "user") {
+        void send(current.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  /* ---------- Chat call + “ChatGPT-like” typing ---------- */
+
+  async function typeAssistantReply(fullText: string) {
+    stopTyping();
+    setIsTyping(true);
+
+    const abortFlag = { aborted: false };
+    typingAbortRef.current = abortFlag;
+
+    // Split into small chunks (words) for “streaming-like” feel
+    const parts = fullText.split(/(\s+)/).filter((x) => x.length > 0);
+
+    let built = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      if (abortFlag.aborted) break;
+      built += parts[i];
+
+      // update last assistant message
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          if (msgs.length === 0) return s;
+          msgs[msgs.length - 1] = { role: "assistant", content: built };
+          return { ...s, messages: msgs };
+        })
+      );
+
+      // small delay per chunk (fast but visible)
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 18));
+    }
+
+    setIsTyping(false);
+    typingAbortRef.current = null;
+  }
+
+  /* ---------- Send ---------- */
+
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || isBusy || isTyping) return;
+
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    setInput("");
+    setIsBusy(true);
+
+    // ✅ Build request payload from latest session state (not stale memo)
+    const requestMessages = buildRequestMessages(current.messages, text);
+
+    // UI: add user + placeholder assistant immediately
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, { role: "user", content: text }, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: requestMessages }),
+      });
+
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        const detail = (data && (data.detail || data.error)) || raw || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+
+      const reply = (data && data.reply) ? String(data.reply) : "";
+
+      // ✅ animate typing like streaming (no backend streaming needed)
+      await typeAssistantReply(reply || "⚠️ Empty reply from server");
+    } catch (e: any) {
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          msgs[msgs.length - 1] = {
+            role: "assistant",
+            content: `⚠️ Chat error: ${e?.message || String(e)}`,
+          };
+          return { ...s, messages: msgs };
+        })
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div style={{ display: "flex", height: "100vh", background: "#fff" }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: 280,
+          padding: 12,
+          borderRight: "1px solid #e5e7eb",
+          background: "#f9fafb",
+        }}
+      >
+        <button
+          onClick={newChat}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            background: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          + New chat
+        </button>
+
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                background: s.id === activeId ? "#2563eb" : "#fff",
+                color: s.id === activeId ? "#fff" : "#111827",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {s.title || "New chat"}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(s.id);
+                }}
+                title="Delete chat"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.35)",
+                  background: s.id === activeId ? "rgba(255,255,255,0.15)" : "#f3f4f6",
+                  color: s.id === activeId ? "#fff" : "#111827",
+                  borderRadius: 8,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 24,
+            background: "#fff",
+          }}
+        >
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            {activeMessages.map((m, i) => {
+              const isLast = i === activeMessages.length - 1;
+              const showStop = isLast && m.role === "assistant" && isTyping;
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    maxWidth: 900,
+                    marginBottom: 18,
+                    padding: 16,
+                    borderRadius: 14,
+                    background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                    color: m.role === "assistant" ? "#111827" : "#fff",
+                    marginLeft: m.role === "assistant" ? 0 : "auto",
+                    boxShadow: m.role === "assistant" ? "0 1px 0 rgba(0,0,0,0.04)" : "none",
+                  }}
+                >
+                  {m.role === "assistant" ? (
+                    <>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {normalizeAssistantText(m.content)}
+                      </ReactMarkdown>
+
+                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => copyText(m.content)}
+                          style={{
+                            border: "1px solid #d1d5db",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          📋 Copy
+                        </button>
+
+                        <button
+                          onClick={() => regenerate(i)}
+                          style={{
+                            border: "1px solid #d1d5db",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          🔄 Regenerate
+                        </button>
+
+                        {showStop ? (
+                          <button
+                            onClick={stopTyping}
+                            style={{
+                              border: "1px solid #d1d5db",
+                              background: "#fff",
+                              borderRadius: 10,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                          >
+                            🔥 Stop
+                          </button>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : (
+                    m.content
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+          style={{
+            padding: 16,
+            borderTop: "1px solid #e5e7eb",
+            background: "#fff",
+          }}
+        >
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              rows={2}
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
+                outline: "none",
+                resize: "none",
+              }}
+              placeholder="Ask anything…"
+              disabled={isBusy || isTyping}
+              onKeyDown={(e) => {
+                // Enter submits, Shift+Enter newline
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10, gap: 8 }}>
+              <button
+                type="submit"
+                disabled={isBusy || isTyping || !input.trim()}
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: isBusy || isTyping || !input.trim() ? "#f3f4f6" : "#2563eb",
+                  color: isBusy || isTyping || !input.trim() ? "#6b7280" : "#fff",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  cursor: isBusy || isTyping || !input.trim() ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+}
+

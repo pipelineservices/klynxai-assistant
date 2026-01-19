@@ -1,0 +1,27 @@
+"use client";
+import { useState } from "react";
+
+export default function ChatInput({ onSend }: { onSend: (t: string) => void }) {
+  const [text, setText] = useState("");
+
+  return (
+    <div className="input-bar">
+      <textarea
+        placeholder="Ask anything…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (text.trim()) {
+              onSend(text);
+              setText("");
+            }
+          }
+        }}
+      />
+      <button onClick={() => text && onSend(text)}>➤</button>
+    </div>
+  );
+}
+

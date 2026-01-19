@@ -1,0 +1,22 @@
+export default function Tabs({
+  tab,
+  setTab,
+}: {
+  tab: string;
+  setTab: (v: string) => void;
+}) {
+  return (
+    <div className="tabs">
+      {["chat", "incidents", "playbooks"].map(t => (
+        <button
+          key={t}
+          className={tab === t ? "active" : ""}
+          onClick={() => setTab(t)}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+

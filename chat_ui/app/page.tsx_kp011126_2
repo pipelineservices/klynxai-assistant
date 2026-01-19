@@ -1,0 +1,631 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Reactions = {
+  up?: boolean;
+  down?: boolean;
+  star?: boolean;
+};
+
+type Message = {
+  role: Role;
+  content: string;
+  reactions?: Reactions; // backward compatible (old sessions won't have this)
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeAssistantText(text: string) {
+  return (text || "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function copyText(text: string) {
+  navigator.clipboard.writeText(text || "");
+}
+
+function buildRequestMessages(history: Message[], newUserText: string): Message[] {
+  const cleaned = history.filter((m) => (m.content || "").trim().length > 0);
+  return [...cleaned, { role: "user", content: newUserText }];
+}
+
+/**
+ * Streaming responses may come as:
+ *  - raw text chunks
+ *  - SSE lines: "data: ...\n\n"
+ * This normalizes both.
+ */
+function extractStreamingText(chunk: string): string {
+  if (!chunk) return "";
+  // If it looks like SSE, parse lines.
+  if (chunk.includes("data:")) {
+    const lines = chunk.split("\n");
+    const parts: string[] = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const payload = trimmed.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+      // Some servers JSON-wrap {token:""} — try parse, else use raw
+      try {
+        const obj = JSON.parse(payload);
+        if (typeof obj === "string") parts.push(obj);
+        else if (obj && typeof obj.token === "string") parts.push(obj.token);
+        else if (obj && typeof obj.text === "string") parts.push(obj.text);
+        else parts.push(payload);
+      } catch {
+        parts.push(payload);
+      }
+    }
+    return parts.join("");
+  }
+  return chunk;
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+
+  const [isBusy, setIsBusy] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Avoid stale state bugs
+  const sessionsRef = useRef<ChatSession[]>([]);
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
+
+  // Cancel streaming/typing
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const typingAbortRef = useRef<{ aborted: boolean } | null>(null);
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+          // Backward compatibility: ensure messages exist & reactions optional
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {}
+    }
+    const first: ChatSession = { id: safeId(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, isStreaming, isTyping]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  const activeMessages = active?.messages ?? [];
+
+  /* ---------- Session actions ---------- */
+
+  function newChat() {
+    const id = safeId();
+    setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+    setActiveId(id);
+  }
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      const next =
+        remaining.length > 0
+          ? remaining
+          : [{ id: safeId(), title: "New chat", messages: [] }];
+
+      if (id === activeId) setActiveId(next[0].id);
+      return next;
+    });
+  }
+
+  function stop() {
+    // Stop stream
+    if (streamAbortRef.current) {
+      streamAbortRef.current.abort();
+      streamAbortRef.current = null;
+    }
+    // Stop typing
+    if (typingAbortRef.current) typingAbortRef.current.aborted = true;
+    typingAbortRef.current = null;
+
+    setIsStreaming(false);
+    setIsTyping(false);
+  }
+
+  function regenerate(index: number) {
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    for (let i = index - 1; i >= 0; i--) {
+      if (current.messages[i]?.role === "user") {
+        void send(current.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  function toggleReaction(messageIndex: number, key: keyof Reactions) {
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeId) return s;
+        const msgs = [...s.messages];
+        const m = msgs[messageIndex];
+        if (!m || m.role !== "assistant") return s;
+
+        const current = m.reactions || {};
+        // Keep 👍 and 👎 mutually exclusive (common UX)
+        if (key === "up") {
+          const nextUp = !current.up;
+          msgs[messageIndex] = {
+            ...m,
+            reactions: { ...current, up: nextUp, down: nextUp ? false : current.down },
+          };
+        } else if (key === "down") {
+          const nextDown = !current.down;
+          msgs[messageIndex] = {
+            ...m,
+            reactions: { ...current, down: nextDown, up: nextDown ? false : current.up },
+          };
+        } else {
+          msgs[messageIndex] = { ...m, reactions: { ...current, star: !current.star } };
+        }
+        return { ...s, messages: msgs };
+      })
+    );
+  }
+
+  /* ---------- Fallback typing (used only if /api/chat/stream fails) ---------- */
+
+  async function typeAssistantReply(fullText: string) {
+    stop();
+    setIsTyping(true);
+
+    const abortFlag = { aborted: false };
+    typingAbortRef.current = abortFlag;
+
+    const parts = fullText.split(/(\s+)/).filter((x) => x.length > 0);
+    let built = "";
+
+    for (let i = 0; i < parts.length; i++) {
+      if (abortFlag.aborted) break;
+      built += parts[i];
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          if (msgs.length === 0) return s;
+          msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], role: "assistant", content: built };
+          return { ...s, messages: msgs };
+        })
+      );
+
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 12));
+    }
+
+    setIsTyping(false);
+    typingAbortRef.current = null;
+  }
+
+  /* ---------- Send ---------- */
+
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || isBusy || isStreaming || isTyping) return;
+
+    const current = sessionsRef.current.find((s) => s.id === activeId);
+    if (!current) return;
+
+    setInput("");
+    setIsBusy(true);
+
+    const requestMessages = buildRequestMessages(current.messages, text);
+
+    // Add user + placeholder assistant
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, { role: "user", content: text }, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    // 1) Try real streaming first
+    try {
+      stop(); // ensure no previous stream is running
+      setIsStreaming(true);
+
+      const ac = new AbortController();
+      streamAbortRef.current = ac;
+
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: requestMessages }),
+        signal: ac.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`/api/chat/stream HTTP ${res.status}`);
+      }
+      if (!res.body) {
+        throw new Error("/api/chat/stream empty body");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let built = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const rawChunk = decoder.decode(value, { stream: true });
+        const textChunk = extractStreamingText(rawChunk);
+        if (!textChunk) continue;
+
+        built += textChunk;
+
+        setSessions((prev) =>
+          prev.map((s) => {
+            if (s.id !== activeId) return s;
+            const msgs = [...s.messages];
+            msgs[msgs.length - 1] = { ...msgs[msgs.length - 1], role: "assistant", content: built };
+            return { ...s, messages: msgs };
+          })
+        );
+      }
+
+      setIsStreaming(false);
+      streamAbortRef.current = null;
+      setIsBusy(false);
+      return;
+    } catch (e: any) {
+      // Streaming failed (your current case: ERR_EMPTY_RESPONSE)
+      setIsStreaming(false);
+      streamAbortRef.current = null;
+      // Fall through to /api/chat
+    }
+
+    // 2) Fallback: normal /api/chat (always works if your backend is healthy)
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: requestMessages }),
+      });
+
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        const detail = (data && (data.detail || data.error)) || raw || `HTTP ${res.status}`;
+        throw new Error(detail);
+      }
+
+      const reply = (data && data.reply) ? String(data.reply) : "⚠️ Empty reply from server";
+      await typeAssistantReply(reply);
+    } catch (e: any) {
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          msgs[msgs.length - 1] = {
+            ...msgs[msgs.length - 1],
+            role: "assistant",
+            content: `⚠️ Failed to fetch: ${e?.message || String(e)}`,
+          };
+          return { ...s, messages: msgs };
+        })
+      );
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div style={{ display: "flex", height: "100vh", background: "#fff" }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: 280,
+          padding: 12,
+          borderRight: "1px solid #e5e7eb",
+          background: "#f9fafb",
+        }}
+      >
+        <button
+          onClick={newChat}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            background: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          + New chat
+        </button>
+
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                background: s.id === activeId ? "#2563eb" : "#fff",
+                color: s.id === activeId ? "#fff" : "#111827",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {s.title || "New chat"}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(s.id);
+                }}
+                title="Delete chat"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.35)",
+                  background: s.id === activeId ? "rgba(255,255,255,0.15)" : "#f3f4f6",
+                  color: s.id === activeId ? "#fff" : "#111827",
+                  borderRadius: 8,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 24,
+            background: "#fff",
+          }}
+        >
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            {activeMessages.map((m, i) => {
+              const isLast = i === activeMessages.length - 1;
+              const showStop = isLast && m.role === "assistant" && (isStreaming || isTyping);
+              const rx = m.reactions || {};
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    maxWidth: 900,
+                    marginBottom: 18,
+                    padding: 16,
+                    borderRadius: 14,
+                    background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                    color: m.role === "assistant" ? "#111827" : "#fff",
+                    marginLeft: m.role === "assistant" ? 0 : "auto",
+                    boxShadow: m.role === "assistant" ? "0 1px 0 rgba(0,0,0,0.04)" : "none",
+                  }}
+                >
+                  {m.role === "assistant" ? (
+                    <>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {normalizeAssistantText(m.content)}
+                      </ReactMarkdown>
+
+                      {/* ChatGPT-style action bar */}
+                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <button
+                          onClick={() => copyText(m.content)}
+                          style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 10, padding: "6px 10px", cursor: "pointer" }}
+                        >
+                          📋 Copy
+                        </button>
+
+                        <button
+                          onClick={() => regenerate(i)}
+                          style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 10, padding: "6px 10px", cursor: "pointer" }}
+                        >
+                          🔄 Regenerate
+                        </button>
+
+                        {showStop ? (
+                          <button
+                            onClick={stop}
+                            style={{ border: "1px solid #d1d5db", background: "#fff", borderRadius: 10, padding: "6px 10px", cursor: "pointer", fontWeight: 700 }}
+                          >
+                            🔥 Stop
+                          </button>
+                        ) : null}
+
+                        {/* Reactions */}
+                        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => toggleReaction(i, "up")}
+                            title="Thumbs up"
+                            style={{
+                              border: "1px solid #d1d5db",
+                              background: rx.up ? "#dbeafe" : "#fff",
+                              borderRadius: 10,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                          >
+                            👍
+                          </button>
+                          <button
+                            onClick={() => toggleReaction(i, "down")}
+                            title="Thumbs down"
+                            style={{
+                              border: "1px solid #d1d5db",
+                              background: rx.down ? "#fee2e2" : "#fff",
+                              borderRadius: 10,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                          >
+                            👎
+                          </button>
+                          <button
+                            onClick={() => toggleReaction(i, "star")}
+                            title="Star"
+                            style={{
+                              border: "1px solid #d1d5db",
+                              background: rx.star ? "#fef9c3" : "#fff",
+                              borderRadius: 10,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ⭐
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    m.content
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Input (Gemini-style: floating send, but keeps your old behavior) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+          style={{
+            padding: 16,
+            borderTop: "1px solid #e5e7eb",
+            background: "#fff",
+          }}
+        >
+          <div style={{ maxWidth: 900, margin: "0 auto", position: "relative" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              rows={2}
+              style={{
+                width: "100%",
+                padding: "14px 56px 14px 16px",
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
+                outline: "none",
+                resize: "none",
+                fontSize: 15,
+                lineHeight: "1.4",
+              }}
+              placeholder="Ask KLYNX anything…"
+              disabled={isBusy || isStreaming || isTyping}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+
+            <button
+              type="submit"
+              disabled={isBusy || isStreaming || isTyping || !input.trim()}
+              style={{
+                position: "absolute",
+                right: 10,
+                bottom: 10,
+                border: "none",
+                background: isBusy || isStreaming || isTyping || !input.trim() ? "#e5e7eb" : "#2563eb",
+                color: "#fff",
+                borderRadius: 10,
+                padding: "8px 12px",
+                cursor: isBusy || isStreaming || isTyping || !input.trim() ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              Send
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+}
+

@@ -1,0 +1,505 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+type Theme = "light" | "dark";
+
+const STORAGE_KEY = "klynx_chat_sessions";
+const THEME_KEY = "klynx_theme";
+
+/* ---------------- Utils ---------------- */
+
+function safeUUID(): string {
+  try {
+    const c: any = typeof crypto !== "undefined" ? crypto : undefined;
+    if (c?.randomUUID) return c.randomUUID();
+  } catch {}
+  return `id_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getInitialTheme(): Theme {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    if (t === "light" || t === "dark") return t;
+  } catch {}
+  // Default: respect system preference if available
+  try {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+    }
+  } catch {}
+  return "light";
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sessionsRef = useRef<ChatSession[]>([]);
+  const activeIdRef = useRef("");
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { sessionsRef.current = sessions; }, [sessions]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
+  /* ---------- Theme Load + Persist ---------- */
+  useEffect(() => {
+    // load on mount
+    const t = getInitialTheme();
+    setTheme(t);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {}
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((t) => (t === "light" ? "dark" : "light"));
+  }
+
+  /* ---------- Load ---------- */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      }
+    } catch {}
+
+    const first: ChatSession = { id: safeUUID(), title: "Hello", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  /* ---------- Persist ---------- */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  /* ---------- Scroll ---------- */
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, activeId, streaming]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  /* ---------- Theme Styles ---------- */
+
+  const palette =
+    theme === "dark"
+      ? {
+          pageBg: "#0b1220",
+          panelBg: "#0f172a",
+          border: "#1f2a44",
+          text: "#e5e7eb",
+          muted: "#9ca3af",
+          userBubble: "#1e3a8a",
+          assistantBubble: "#111827",
+          bubbleText: "#e5e7eb",
+          inputBg: "#0b1220",
+          inputBorder: "#26324f",
+          buttonBg: "#111827",
+          buttonBorder: "#2b385a",
+          buttonText: "#e5e7eb",
+          activeChatBg: "#132043",
+          hoverBg: "#101a33",
+        }
+      : {
+          pageBg: "#ffffff",
+          panelBg: "#ffffff",
+          border: "#dddddd",
+          text: "#111827",
+          muted: "#6b7280",
+          userBubble: "#e7f0ff",
+          assistantBubble: "#f0f0f0",
+          bubbleText: "#111827",
+          inputBg: "#ffffff",
+          inputBorder: "#dddddd",
+          buttonBg: "#ffffff",
+          buttonBorder: "#dddddd",
+          buttonText: "#111827",
+          activeChatBg: "#e7f0ff",
+          hoverBg: "#f5f7fb",
+        };
+
+  /* ---------- Helpers ---------- */
+
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+
+  function stopStreaming() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setStreaming(false);
+  }
+
+  function regenerate(index: number) {
+    if (!active) return;
+    for (let i = index - 1; i >= 0; i--) {
+      if (active.messages[i].role === "user") {
+        setInput(active.messages[i].content);
+        setTimeout(send, 0);
+        return;
+      }
+    }
+  }
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      if (id === activeIdRef.current) {
+        if (next.length) setActiveId(next[0].id);
+        else {
+          const first: ChatSession = { id: safeUUID(), title: "Hello", messages: [] };
+          setActiveId(first.id);
+          return [first];
+        }
+      }
+      return next;
+    });
+  }
+
+  /* ---------- Send ---------- */
+
+  async function send() {
+    const text = input.trim();
+    if (!text || streaming || !active) return;
+
+    setInput("");
+    setStreaming(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const userMsg: Message = { role: "user", content: text };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 32) : s.title,
+              messages: [...s.messages, userMsg, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...active.messages, userMsg] }),
+        signal: controller.signal,
+      });
+
+      if (!res.body) throw new Error("No stream");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = "";
+      let pending = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split("\n");
+        pending = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const chunk = line.replace(/^data:\s*/, "");
+          if (chunk === "[DONE]") break;
+
+          buffer += chunk;
+
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id !== activeId) return s;
+              const msgs = [...s.messages];
+              msgs[msgs.length - 1] = { role: "assistant", content: buffer };
+              return { ...s, messages: msgs };
+            })
+          );
+        }
+      }
+    } catch (e: any) {
+      if (e?.name !== "AbortError") console.error(e);
+    } finally {
+      abortRef.current = null;
+      setStreaming(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+        fontFamily: "system-ui",
+        background: palette.pageBg,
+        color: palette.text,
+      }}
+    >
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: 260,
+          borderRight: `1px solid ${palette.border}`,
+          padding: 12,
+          background: palette.panelBg,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+          <button
+            onClick={() => {
+              const id = safeUUID();
+              setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+              setActiveId(id);
+            }}
+            style={{
+              flex: 1,
+              border: `1px solid ${palette.buttonBorder}`,
+              background: palette.buttonBg,
+              color: palette.buttonText,
+              borderRadius: 8,
+              padding: "8px 10px",
+              cursor: "pointer",
+            }}
+          >
+            + New chat
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            title="Toggle theme"
+            style={{
+              width: 44,
+              border: `1px solid ${palette.buttonBorder}`,
+              background: palette.buttonBg,
+              color: palette.buttonText,
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+          >
+            {theme === "dark" ? "🌙" : "☀️"}
+          </button>
+        </div>
+
+        <div style={{ marginTop: 10, fontSize: 12, color: palette.muted }}>
+          Theme: {theme}
+        </div>
+
+        {sessions.map((s) => (
+          <div
+            key={s.id}
+            onClick={() => setActiveId(s.id)}
+            style={{
+              marginTop: 10,
+              padding: 10,
+              borderRadius: 10,
+              background: s.id === activeId ? palette.activeChatBg : "transparent",
+              display: "flex",
+              justifyContent: "space-between",
+              cursor: "pointer",
+              gap: 10,
+            }}
+            onMouseEnter={(e) => {
+              if (s.id !== activeId) (e.currentTarget.style.background = palette.hoverBg);
+            }}
+            onMouseLeave={(e) => {
+              if (s.id !== activeId) (e.currentTarget.style.background = "transparent");
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {s.title}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteChat(s.id);
+              }}
+              style={{
+                border: "none",
+                background: "transparent",
+                color: palette.text,
+                cursor: "pointer",
+              }}
+              title="Delete chat"
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </aside>
+
+      {/* Chat */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+          {active?.messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: 12,
+                padding: 12,
+                borderRadius: 12,
+                background: m.role === "user" ? palette.userBubble : palette.assistantBubble,
+                color: palette.bubbleText,
+                border: `1px solid ${theme === "dark" ? "#111827" : "transparent"}`,
+              }}
+            >
+              {m.role === "assistant" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {m.content}
+                </ReactMarkdown>
+              ) : (
+                <span>{m.content}</span>
+              )}
+
+              {m.role === "assistant" && (
+                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => copyText(m.content)}
+                    style={{
+                      border: `1px solid ${palette.buttonBorder}`,
+                      background: palette.buttonBg,
+                      color: palette.buttonText,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    onClick={() => regenerate(i)}
+                    style={{
+                      border: `1px solid ${palette.buttonBorder}`,
+                      background: palette.buttonBg,
+                      color: palette.buttonText,
+                      borderRadius: 8,
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    🔄 Regenerate
+                  </button>
+
+                  {streaming && i === active.messages.length - 1 && (
+                    <button
+                      onClick={stopStreaming}
+                      style={{
+                        border: `1px solid ${palette.buttonBorder}`,
+                        background: palette.buttonBg,
+                        color: palette.buttonText,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ⏹ Stop
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {streaming &&
+                i === active.messages.length - 1 &&
+                m.role === "assistant" && <span style={{ marginLeft: 2 }}>▍</span>}
+            </div>
+          ))}
+        </div>
+
+        <div
+          style={{
+            padding: 12,
+            borderTop: `1px solid ${palette.border}`,
+            background: palette.panelBg,
+          }}
+        >
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Message KLYNX..."
+            rows={2}
+            style={{
+              width: "100%",
+              resize: "none",
+              borderRadius: 12,
+              padding: 10,
+              background: palette.inputBg,
+              color: palette.text,
+              border: `1px solid ${palette.inputBorder}`,
+              outline: "none",
+              marginBottom: 8,
+            }}
+          />
+          <button
+            onClick={send}
+            disabled={streaming}
+            style={{
+              border: `1px solid ${palette.buttonBorder}`,
+              background: palette.buttonBg,
+              color: palette.buttonText,
+              borderRadius: 10,
+              padding: "8px 14px",
+              cursor: streaming ? "not-allowed" : "pointer",
+              opacity: streaming ? 0.7 : 1,
+            }}
+          >
+            Send
+          </button>
+        </div>
+      </main>
+    </div>
+  );
+}
+

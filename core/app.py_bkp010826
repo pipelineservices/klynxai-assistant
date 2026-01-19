@@ -1,0 +1,383 @@
+from __future__ import annotations
+
+import os
+import uuid
+import importlib
+from typing import Any, Dict, List, Optional, Callable
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# Routers + incident helpers
+from core.api.incidents import (
+    router as incidents_router,
+    create_incident_record,
+    notify_slack_incident,
+)
+
+# ------------------------------------------------------------
+# Models
+# ------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+class Action(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    type: str = Field(default="task")
+    title: str = Field(default="")
+    name: Optional[str] = None
+    risk: Optional[str] = None
+
+    @model_validator(mode="after")
+    def fill_required(self) -> "Action":
+        if not self.title:
+            self.title = self.name or "action"
+        if not self.type:
+            self.type = "task"
+        return self
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    actions: List[Action]
+    request_id: str
+
+
+# ------------------------------------------------------------
+# LLM fallback + loader (safe)
+# ------------------------------------------------------------
+
+class _FallbackLocalLLM:
+    async def reply(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        user_text = next(
+            (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+            "",
+        )
+        return {"reply": f"I understand. You said: {user_text}", "actions": []}
+
+
+def _load_llm() -> Any:
+    """
+    Safe loader:
+    - If BedrockLLM exists, use it (enterprise).
+    - Else try any existing local LLMs.
+    - Else fallback echo LLM.
+    """
+    candidates = [
+        # 1) Bedrock first (enterprise)
+        ("core.llm.bedrock_llm", "BedrockLLM"),
+
+        # 2) Existing local candidates (fallbacks)
+        ("klynx_core.llm.local_llm", "LocalLLM"),
+        ("core.llm.local_llm", "LocalLLM"),
+        ("llm.local_llm", "LocalLLM"),
+        ("local_llm", "LocalLLM"),
+    ]
+    for mod_name, cls_name in candidates:
+        try:
+            module = importlib.import_module(mod_name)
+            cls = getattr(module, cls_name)
+            return cls()
+        except Exception:
+            continue
+    return _FallbackLocalLLM()
+
+
+LLM = _load_llm()
+
+# ------------------------------------------------------------
+# FastAPI app
+# ------------------------------------------------------------
+
+app = FastAPI(title="KLYNX Core API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(incidents_router)
+
+# ------------------------------------------------------------
+# Basic routes
+# ------------------------------------------------------------
+
+@app.get("/")
+async def root():
+    return {"service": "klynx-core", "status": "ok"}
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+# ------------------------------------------------------------
+# Error → Incident middleware
+# ------------------------------------------------------------
+
+@app.middleware("http")
+async def incident_on_exception(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as e:
+        incident = create_incident_record(
+            summary=f"Core error: {type(e).__name__}",
+            description=str(e),
+            source="otel/core",
+        )
+        try:
+            notify_slack_incident(incident)
+        except Exception:
+            pass
+        raise
+
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
+def normalize_actions(raw: Any) -> List[Action]:
+    if not raw:
+        return []
+    if isinstance(raw, dict):
+        raw = [raw]
+    if isinstance(raw, str):
+        raw = [{"title": raw, "type": "message"}]
+    out: List[Action] = []
+    if isinstance(raw, list):
+        for r in raw:
+            if isinstance(r, dict):
+                out.append(Action(**r))
+    return out
+
+
+def _last_user_text(messages: List[Dict[str, str]]) -> str:
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            return str(m.get("content", "")).strip()
+    return ""
+
+
+def _rag_search(query: str, k: int = 4) -> List[Dict[str, Any]]:
+    """
+    Safe RAG search bridge:
+    - Tries to import the existing RAG module.
+    - If anything fails, returns [] and chat continues normally.
+    """
+    try:
+        mod = importlib.import_module("core.api.rag")
+    except Exception:
+        return []
+
+    candidates: List[str] = ["rag_search", "search_rag", "search", "api_search"]
+
+    fn: Optional[Callable[..., Any]] = None
+    for name in candidates:
+        try:
+            maybe = getattr(mod, name, None)
+            if callable(maybe):
+                fn = maybe
+                break
+        except Exception:
+            continue
+
+    if fn is None:
+        return []
+
+    try:
+        res = fn(query=query, k=k)  # type: ignore[misc]
+        if isinstance(res, dict) and "results" in res:
+            res = res["results"]
+        if isinstance(res, list):
+            return [r for r in res if isinstance(r, dict)]
+        return []
+    except Exception:
+        return []
+
+
+def _rag_system_context(results: List[Dict[str, Any]], max_chars: int = 3500) -> str:
+    lines: List[str] = []
+    for i, r in enumerate(results, start=1):
+        doc = str(r.get("doc_path") or r.get("path") or "doc")
+        txt = str(r.get("text") or "")
+        score = r.get("score")
+        prefix = f"[{i}] {doc}"
+        if score is not None:
+            prefix += f" (score={score})"
+        block = f"{prefix}\n{txt}".strip()
+        lines.append(block)
+
+    blob = "\n\n---\n\n".join(lines).strip()
+    if len(blob) > max_chars:
+        blob = blob[:max_chars] + "\n\n...(trimmed)"
+    return (
+        "You are KLYNX AI Assistant. Use the following internal document excerpts as context when helpful.\n"
+        "If context is irrelevant, ignore it and answer normally.\n\n"
+        f"{blob}"
+    )
+
+
+def _openai_client():
+    # Lazy import so core still boots even if openai isn't installed (unless provider=openai)
+    from openai import OpenAI  # type: ignore
+    key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
+    return OpenAI(api_key=key)
+
+
+def _is_openai_provider() -> bool:
+    return os.getenv("KLYNX_LLM_PROVIDER", "").strip().lower() == "openai"
+
+
+def _build_messages_with_optional_rag(req_messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    messages = list(req_messages)
+
+    rag_enabled = os.getenv("KLYNX_RAG_CHAT", "1").strip() not in ("0", "false", "False", "no", "NO")
+    rag_topk = int(os.getenv("KLYNX_RAG_TOPK", "4"))
+    rag_max_chars = int(os.getenv("KLYNX_RAG_MAX_CHARS", "3500"))
+
+    if rag_enabled:
+        user_q = _last_user_text(messages)
+        if user_q:
+            hits = _rag_search(user_q, k=rag_topk)
+            if hits:
+                sys_ctx = _rag_system_context(hits, max_chars=rag_max_chars)
+                messages = [{"role": "system", "content": sys_ctx}] + messages
+
+    return messages
+
+
+# ------------------------------------------------------------
+# Chat API (OpenAI provider OR safe fallback)
+# ------------------------------------------------------------
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest) -> ChatResponse:
+    request_id = str(uuid.uuid4())
+    messages = [{"role": m.role, "content": m.content} for m in req.messages]
+    messages = _build_messages_with_optional_rag(messages)
+
+    try:
+        # --- OpenAI real replies ---
+        if _is_openai_provider():
+            client = _openai_client()
+            model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            completion = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.3")),
+            )
+            reply_text = completion.choices[0].message.content or ""
+            actions: List[Action] = []
+
+        # --- Existing fallback logic ---
+        else:
+            result = await LLM.reply(messages)  # type: ignore[attr-defined]
+            if isinstance(result, dict):
+                reply_text = str(result.get("reply", ""))
+                actions = normalize_actions(result.get("actions", []))
+            else:
+                reply_text = str(result)
+                actions = []
+
+        if reply_text:
+            create_incident_record(
+                summary="Chat interaction",
+                description=reply_text,
+                source="chat",
+                raw={"messages": messages},
+            )
+
+        return ChatResponse(reply=reply_text, actions=actions, request_id=request_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ------------------------------------------------------------
+# OpenAI true streaming (SSE)
+# ------------------------------------------------------------
+# ------------------------------------------------------------
+# OpenAI true streaming (SSE) — ChatGPT-style
+# ------------------------------------------------------------
+
+@app.post("/api/chat/stream")
+async def chat_stream(req: ChatRequest):
+    if not _is_openai_provider():
+        raise HTTPException(
+            status_code=400,
+            detail="Streaming is only enabled when KLYNX_LLM_PROVIDER=openai",
+        )
+
+    client = _openai_client()
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.3"))
+
+    base_messages = [{"role": m.role, "content": m.content} for m in req.messages]
+    messages = _build_messages_with_optional_rag(base_messages)
+
+    def sse(data: str) -> str:
+        return f"data: {data}\n\n"
+
+    def generator():
+        buffer = ""
+
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta
+                token = getattr(delta, "content", None)
+                if not token:
+                    continue
+
+                buffer += token
+
+                # Flush only at safe boundaries (ChatGPT-style)
+                if buffer.endswith((
+                    " ", "\n", ".", ",", "!", "?", ":", ";",
+                    ")", "]", "}", "%", "\t"
+                )):
+                    yield sse(buffer)
+                    buffer = ""
+
+            # Flush remaining buffer
+            if buffer:
+                yield sse(buffer)
+
+            yield sse("[DONE]")
+
+        except Exception as e:
+            yield sse(f"[ERROR] {type(e).__name__}: {e}")
+            yield sse("[DONE]")
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+

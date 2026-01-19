@@ -1,0 +1,283 @@
+"use client";
+
+import React from "react";
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: { role: string; content: string }[];
+};
+
+type SidebarProps = {
+  colors: any;
+  sessions: ChatSession[];
+  filteredSessions: ChatSession[];
+  activeId: string;
+  renamingId: string;
+  renameDraft: string;
+  chatSearch: string;
+  onChatSearchChange: (v: string) => void;
+  onNewChat: () => void;
+  onToggleTheme: () => void;
+  onSetActiveId: (id: string) => void;
+  onStartRename: (id: string, currentTitle: string) => void;
+  onSetRenameDraft: (v: string) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  onDeleteChat: (id: string) => void;
+};
+
+function NavItem({
+  label,
+  icon,
+  colors,
+}: {
+  label: string;
+  icon: string;
+  colors: any;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "7px 8px",
+        borderRadius: 9,
+        cursor: "pointer",
+        userSelect: "none",
+        color: colors.text,
+        border: `1px solid ${colors.panelBorder}`,
+        background: colors.btnBg,
+        fontWeight: 900,
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = colors.sidebarHover;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = colors.btnBg;
+      }}
+    >
+      <span style={{ fontSize: 16, lineHeight: "16px" }}>{icon}</span>
+      <span style={{ fontSize: 12, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+export default function Sidebar(props: SidebarProps) {
+  const {
+    colors,
+    filteredSessions,
+    activeId,
+    renamingId,
+    renameDraft,
+    chatSearch,
+    onChatSearchChange,
+    onNewChat,
+    onToggleTheme,
+    onSetActiveId,
+    onStartRename,
+    onSetRenameDraft,
+    onCommitRename,
+    onCancelRename,
+    onDeleteChat,
+  } = props;
+
+  return (
+    <aside
+      style={{
+        width: 260,
+        padding: 10,
+        borderRight: `1px solid ${colors.panelBorder}`,
+        background: colors.sidebarBg,
+        color: colors.text,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      {/* Brand row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontWeight: 1000, fontSize: 16, letterSpacing: 0.2 }}>
+          <span style={{ color: "#2563eb" }}>klynx</span>
+          <span style={{ color: colors.text }}>ai</span>
+        </div>
+
+        <button
+          onClick={onToggleTheme}
+          title="Toggle dark/light"
+          style={{
+            width: 44,
+            padding: "8px 0",
+            borderRadius: 9,
+            border: `1px solid ${colors.btnBorder}`,
+            background: colors.btnBg,
+            color: colors.text,
+            cursor: "pointer",
+            fontWeight: 900,
+          }}
+        >
+          {colors.isDark ? "☀️" : "🌙"}
+        </button>
+      </div>
+
+      {/* Left sidebar menu */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div onClick={onNewChat}>
+          <NavItem label="New Chat" icon="📝" colors={colors} />
+        </div>
+        <NavItem label="Search Chats" icon="🔍" colors={colors} />
+        <NavItem label="Images" icon="🖼" colors={colors} />
+        <NavItem label="Social" icon="🌐" colors={colors} />
+        <NavItem label="Apps" icon="🧩" colors={colors} />
+        <NavItem label="Codex" icon="💻" colors={colors} />
+        <NavItem label="GPTs" icon="🤖" colors={colors} />
+        <NavItem label="Projects" icon="📁" colors={colors} />
+        <NavItem label="Cloud" icon="☁️" colors={colors} />
+      </div>
+
+      {/* Search box */}
+      <div style={{ marginTop: 6 }}>
+        <input
+          value={chatSearch}
+          onChange={(e) => onChatSearchChange(e.target.value)}
+          placeholder="Search chats…"
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: 9,
+            border: `1px solid ${colors.panelBorder}`,
+            background: colors.btnBg,
+            color: colors.text,
+            outline: "none",
+          }}
+        />
+      </div>
+
+      <div style={{ marginTop: 2, fontSize: 12, color: colors.muted, fontWeight: 800 }}>
+        Your chats
+      </div>
+
+      {/* Chats list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", paddingRight: 2 }}>
+        {filteredSessions.map((s) => {
+          const isActive = s.id === activeId;
+          const isRenaming = renamingId === s.id;
+
+          return (
+            <div
+              key={s.id}
+              onClick={() => {
+                if (!isRenaming) onSetActiveId(s.id);
+              }}
+              style={{
+                padding: 10,
+                borderRadius: 12,
+                background: isActive ? "#2563eb" : colors.btnBg,
+                color: isActive ? "#fff" : colors.text,
+                border: `1px solid ${colors.panelBorder}`,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isRenaming ? (
+                  <input
+                    value={renameDraft}
+                    autoFocus
+                    onChange={(e) => onSetRenameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        onCommitRename();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        onCancelRename();
+                      }
+                    }}
+                    onBlur={() => onCommitRename()}
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: 8,
+                      border: `1px solid ${colors.btnBorder}`,
+                      background: colors.isDark ? "#0b1220" : "#ffffff",
+                      color: colors.isDark ? "#e5e7eb" : "#111827",
+                      outline: "none",
+                    }}
+                  />
+                ) : (
+                  <span
+                    title={s.title || "New chat"}
+                    style={{
+                      fontSize: 14,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "block",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {s.title || "New chat"}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (renamingId === s.id) return;
+                    onStartRename(s.id, s.title || "New chat");
+                  }}
+                  title="Rename"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    background: isActive ? "rgba(255,255,255,0.15)" : colors.isDark ? "#0b1220" : "#f3f4f6",
+                    color: isActive ? "#fff" : colors.text,
+                    borderRadius: 10,
+                    padding: "6px 8px",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    lineHeight: "12px",
+                  }}
+                >
+                  ✏️
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteChat(s.id);
+                  }}
+                  title="Delete chat"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    background: isActive ? "rgba(255,255,255,0.15)" : colors.isDark ? "#0b1220" : "#f3f4f6",
+                    color: isActive ? "#fff" : colors.text,
+                    borderRadius: 10,
+                    padding: "6px 8px",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    lineHeight: "12px",
+                  }}
+                >
+                  🗑
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}
+

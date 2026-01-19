@@ -1,0 +1,412 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+/**
+ * Normalizer ONLY for assistant text rendering (NOT for streaming parsing)
+ * - Keeps paragraph structure
+ * - Fixes LaTeX delimiters
+ * - Collapses excessive blank lines
+ */
+function normalizeAssistantText(text: string) {
+  return text
+    // Join standalone $ blocks into proper math (multiline)
+    .replace(/\$\s*\n\s*([\s\S]+?)\s*\n\s*\$/g, (_, expr) => `$$\n${expr}\n$$`)
+
+    // Convert LaTeX brackets to $ / $$
+    .replace(/\\\[/g, "$$")
+    .replace(/\\\]/g, "$$")
+    .replace(/\\\(/g, "$")
+    .replace(/\\\)/g, "$")
+
+    // Collapse excessive newlines (but keep normal paragraph newlines)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * ✅ CRITICAL FIX: Proper SSE parser
+ * Your backend sends `data: <token>\n\n` per SSE event.
+ * Old code removed `data:` but kept `\n\n` → each token became a new paragraph.
+ *
+ * This parses SSE events and returns clean `data` payloads WITHOUT the framing newlines.
+ */
+function sseExtractDataEvents(raw: string): { events: string[]; rest: string } {
+  const events: string[] = [];
+  let buffer = raw;
+
+  // SSE events are separated by a blank line
+  while (true) {
+    const sep = buffer.indexOf("\n\n");
+    if (sep === -1) break;
+
+    const eventBlock = buffer.slice(0, sep);
+    buffer = buffer.slice(sep + 2);
+
+    // Collect all data: lines (SSE can have multi-line data)
+    const lines = eventBlock.split("\n");
+    const dataLines: string[] = [];
+    for (const line of lines) {
+      if (line.startsWith("data:")) {
+        dataLines.push(line.slice(5).trimStart());
+      }
+    }
+
+    if (dataLines.length) {
+      events.push(dataLines.join("\n"));
+    }
+  }
+
+  return { events, rest: buffer };
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Streaming state (avoid regressions)
+  const sseRawRef = useRef<string>(""); // holds partial SSE frame data
+  const assistantTextRef = useRef<string>(""); // holds accumulated assistant text
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {
+        // ignore corrupted storage
+      }
+    }
+    const first = { id: safeId(), title: "New chat", messages: [] as Message[] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollTo({
+      top: chatScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, streaming]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  /* ---------- Actions ---------- */
+
+  function deleteChat(id: string) {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      if (!next.length) {
+        const fresh = { id: safeId(), title: "New chat", messages: [] as Message[] };
+        setActiveId(fresh.id);
+        return [fresh];
+      }
+      if (id === activeId) setActiveId(next[0].id);
+      return next;
+    });
+  }
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  }
+
+  function regenerate(index: number) {
+    if (!active) return;
+    for (let i = index - 1; i >= 0; i--) {
+      if (active.messages[i].role === "user") {
+        send(active.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  function stopStreaming() {
+    abortRef.current?.abort();
+    setStreaming(false);
+  }
+
+  /* ---------- Send ---------- */
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || streaming || !active) return;
+
+    setInput("");
+    setStreaming(true);
+
+    // reset streaming refs
+    sseRawRef.current = "";
+    assistantTextRef.current = "";
+
+    const userMsg: Message = { role: "user", content: text };
+
+    // Optimistically add placeholder assistant message
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, userMsg, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    abortRef.current = new AbortController();
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({ messages: [...active.messages, userMsg] }),
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error(`stream failed: ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+
+        // Accumulate raw SSE frames, parse complete events
+        sseRawRef.current += chunk;
+
+        const { events, rest } = sseExtractDataEvents(sseRawRef.current);
+        sseRawRef.current = rest;
+
+        for (const data of events) {
+          if (data === "[DONE]") {
+            setStreaming(false);
+            return;
+          }
+
+          // Surface backend errors, but don’t break UI
+          if (data.startsWith("[ERROR]")) {
+            assistantTextRef.current += `\n\n⚠️ ${data}\n\n`;
+          } else {
+            // ✅ Append token text WITHOUT SSE framing newlines
+            assistantTextRef.current += data;
+          }
+
+          const nextAssistant = assistantTextRef.current;
+
+          // Update last assistant message
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id !== activeId) return s;
+              const msgs = [...s.messages];
+              msgs[msgs.length - 1] = { role: "assistant", content: nextAssistant };
+              return { ...s, messages: msgs };
+            })
+          );
+        }
+      }
+    } catch (e: any) {
+      // show error in chat
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          msgs[msgs.length - 1] = {
+            role: "assistant",
+            content: `⚠️ Streaming error: ${e?.message ?? String(e)}`,
+          };
+          return { ...s, messages: msgs };
+        })
+      );
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Sidebar */}
+      <aside style={{ width: 260, padding: 12, borderRight: "1px solid #e5e7eb" }}>
+        <button
+          onClick={() => {
+            const id = safeId();
+            setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+            setActiveId(id);
+          }}
+        >
+          + New chat
+        </button>
+
+        {sessions.map((s) => (
+          <div
+            key={s.id}
+            onClick={() => setActiveId(s.id)}
+            style={{
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 8,
+              background: s.id === activeId ? "#2563eb" : "transparent",
+              color: s.id === activeId ? "#fff" : "#000",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              gap: 8,
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {s.title}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteChat(s.id);
+              }}
+              title="Delete chat"
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </aside>
+
+      {/* Chat */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div ref={chatScrollRef} style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+          {active?.messages.map((m, i) => (
+            <div
+              key={i}
+              className="msg"
+              style={{
+                maxWidth: 820,
+                marginBottom: 22,
+                padding: 14,
+                borderRadius: 12,
+                background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                color: m.role === "assistant" ? "#000" : "#fff",
+                marginLeft: m.role === "assistant" ? 0 : "auto",
+                position: "relative",
+                lineHeight: 1.5,
+                wordBreak: "break-word",
+              }}
+            >
+              {m.role === "assistant" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                  {normalizeAssistantText(m.content)}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
+
+              {/* Hover toolbar (copy/regenerate/stop) */}
+              {m.role === "assistant" && (
+                <div className="hover-toolbar" style={{ position: "absolute", top: 8, right: 10, display: "flex", gap: 6, opacity: 0 }}>
+                  <button onClick={() => copyText(m.content)} title="Copy">📋</button>
+                  <button onClick={() => regenerate(i)} title="Regenerate">🔄</button>
+                  {streaming && i === (active.messages.length - 1) && (
+                    <button onClick={stopStreaming} title="Stop">⏹</button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          style={{ padding: 12, borderTop: "1px solid #e5e7eb" }}
+        >
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={2}
+            style={{ width: "100%", padding: 10 }}
+            placeholder="Ask anything…"
+            onKeyDown={(e) => {
+              // Enter sends, Shift+Enter adds newline
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+          <div style={{ textAlign: "right", marginTop: 6 }}>
+            <button type="submit" disabled={streaming}>
+              Send
+            </button>
+          </div>
+        </form>
+
+        <style>{`
+          .msg:hover .hover-toolbar { opacity: 1; transition: opacity 0.15s ease; }
+        `}</style>
+      </main>
+    </div>
+  );
+}
+

@@ -1,0 +1,242 @@
+from __future__ import annotations
+
+import os
+import time
+import uuid
+from typing import Any, Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# IMPORTANT: correct import path (module is under core/api)
+from core.api.incidents import router as incidents_router
+from core.api.incidents import create_incident_record, notify_slack_incident  # persistence + slack notify
+
+
+# ------------------------------------------------------------
+# Models (keep strict enough for stability, flexible for actions)
+# ------------------------------------------------------------
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+class Action(BaseModel):
+    """
+    Action contract for /api/chat response.
+
+    Some LLMs return: {"name": "...", "risk": "..."} only.
+    Our API contract requires: type + title.
+    We normalize to ensure type/title are always present.
+    """
+    model_config = ConfigDict(extra="allow")
+
+    type: str = Field(default="task")
+    title: str = Field(default="")
+    name: Optional[str] = None
+    risk: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _fill_required(self) -> "Action":
+        if not self.title:
+            if self.name:
+                self.title = str(self.name)
+            else:
+                self.title = "action"
+        if not self.type:
+            self.type = "task"
+        return self
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    actions: List[Action] = Field(default_factory=list)
+    request_id: str
+
+
+# ------------------------------------------------------------
+# LLM loader (minimal + safe fallback)
+# ------------------------------------------------------------
+
+class _FallbackLocalLLM:
+    async def reply(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+        user_text = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                user_text = m.get("content", "")
+                break
+        return {
+            "reply": f"I understand. You said: {user_text}",
+            "actions": [],
+        }
+
+
+def _load_llm() -> Any:
+    candidates = [
+        ("klynx_core.llm.local_llm", "LocalLLM"),
+        ("core.llm.local_llm", "LocalLLM"),
+        ("llm.local_llm", "LocalLLM"),
+        ("local_llm", "LocalLLM"),
+    ]
+    for mod_name, cls_name in candidates:
+        try:
+            module = __import__(mod_name, fromlist=[cls_name])
+            cls = getattr(module, cls_name)
+            return cls()
+        except Exception:
+            continue
+    return _FallbackLocalLLM()
+
+
+LLM = _load_llm()
+
+# ------------------------------------------------------------
+# FastAPI app
+# ------------------------------------------------------------
+
+app = FastAPI(title="KLYNX Core API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---- Routers ----
+app.include_router(incidents_router)
+
+# ------------------------------------------------------------
+# Basic routes
+# ------------------------------------------------------------
+
+@app.get("/")
+async def root() -> Dict[str, str]:
+    return {"service": "klynx-core", "status": "ok"}
+
+@app.get("/health")
+async def health() -> Dict[str, str]:
+    return {"status": "ok"}
+
+
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
+def _normalize_actions(raw_actions: Any) -> List[Action]:
+    if raw_actions is None:
+        return []
+    if isinstance(raw_actions, dict):
+        raw_actions = [raw_actions]
+    if isinstance(raw_actions, str):
+        raw_actions = [{"title": raw_actions, "type": "message"}]
+    if not isinstance(raw_actions, list):
+        return []
+
+    normalized: List[Action] = []
+    for item in raw_actions:
+        if isinstance(item, str):
+            normalized.append(Action(title=item, type="message"))
+            continue
+        if isinstance(item, dict):
+            if "title" not in item or not item.get("title"):
+                if item.get("name"):
+                    item["title"] = item.get("name")
+            if "type" not in item or not item.get("type"):
+                item["type"] = "task"
+            normalized.append(Action(**item))
+            continue
+    return normalized
+
+
+# ------------------------------------------------------------
+# Error-to-Incident (OTEL-ish) capture
+# ------------------------------------------------------------
+
+@app.middleware("http")
+async def incident_on_exception(request: Request, call_next):
+    """
+    If any unhandled exception occurs inside Core, we create an incident record.
+    This makes "errors/issues reported on OTEL" visible to Slack + Incident UI.
+
+    Optional:
+      - If SLACK_WEBHOOK_URL is set, we post incident to Slack automatically.
+    """
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        # Create incident from error
+        incident = create_incident_record(
+            summary=f"Core error: {type(e).__name__}",
+            description=str(e),
+            source="otel/core",
+            trace_id=request.headers.get("x-trace-id") or request.headers.get("x-request-id"),
+            user_message=f"{request.method} {request.url.path}",
+        )
+        # Notify Slack if configured
+        try:
+            notify_slack_incident(incident)
+        except Exception:
+            pass
+
+        # Return original error response
+        raise
+
+
+# ------------------------------------------------------------
+# Chat endpoint
+# ------------------------------------------------------------
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest) -> ChatResponse:
+    request_id = str(uuid.uuid4())
+    messages = [{"role": m.role, "content": m.content} for m in req.messages]
+
+    try:
+        result = await LLM.reply(messages)  # type: ignore[attr-defined]
+
+        if isinstance(result, str):
+            reply_text = result
+            raw_actions = []
+        elif isinstance(result, dict):
+            reply_text = str(result.get("reply", ""))
+            raw_actions = result.get("actions", [])
+        else:
+            reply_text = str(result)
+            raw_actions = []
+
+        actions = _normalize_actions(raw_actions)
+
+        # Store incident-like record for visibility (optional)
+        if reply_text:
+            incident = create_incident_record(
+                summary=reply_text[:120] or "chat",
+                description=reply_text[:500],
+                source="api/chat",
+                trace_id=None,
+                user_message=messages[-1]["content"] if messages else "",
+            )
+            try:
+                notify_slack_incident(incident)
+            except Exception:
+                pass
+
+        return ChatResponse(reply=reply_text, actions=actions, request_id=request_id)
+
+    except AttributeError as e:
+        raise HTTPException(status_code=500, detail=f"LLM interface error: {e}") from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# For uvicorn configs that expect "application"
+application = app
+

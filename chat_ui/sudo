@@ -1,0 +1,351 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chats";
+const ACTIVE_KEY = "klynx_active_chat";
+
+function makeId() {
+  // crypto.randomUUID() is fine in modern browsers; fallback for safety
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `chat_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+export default function Page() {
+  const [chats, setChats] = useState<Record<string, ChatSession>>({});
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // ✅ Init: load chats OR create a default one
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const savedActive = localStorage.getItem(ACTIVE_KEY);
+
+    if (saved) {
+      const parsed = JSON.parse(saved) as Record<string, ChatSession>;
+      const ids = Object.keys(parsed);
+
+      if (ids.length > 0) {
+        setChats(parsed);
+        if (savedActive && parsed[savedActive]) setActiveId(savedActive);
+        else setActiveId(ids[0]);
+        return;
+      }
+    }
+
+    // no saved chats -> create one
+    const id = makeId();
+    setChats({
+      [id]: { title: "Current Chat", messages: [] },
+    });
+    setActiveId(id);
+  }, []);
+
+  // Persist
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    if (activeId) localStorage.setItem(ACTIVE_KEY, activeId);
+  }, [chats, activeId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chats, activeId]);
+
+  function newChat() {
+    const id = makeId();
+    setChats((prev) => ({
+      ...prev,
+      [id]: { title: "New chat", messages: [] },
+    }));
+    setActiveId(id);
+    setInput("");
+  }
+
+  const activeChat = activeId ? chats[activeId] : null;
+
+  async function sendMessage() {
+    if (!input.trim() || !activeId || streaming) return;
+
+    const userText = input.trim();
+    setInput("");
+
+    // add user message
+    setChats((prev) => {
+      const chat = prev[activeId];
+      const title = chat.title === "New chat" ? userText.slice(0, 40) : chat.title;
+
+      return {
+        ...prev,
+        [activeId]: {
+          ...chat,
+          title,
+          messages: [...chat.messages, { role: "user", content: userText }],
+        },
+      };
+    });
+
+    // add empty assistant msg that we'll stream into
+    setChats((prev) => {
+      const chat = prev[activeId];
+      return {
+        ...prev,
+        [activeId]: {
+          ...chat,
+          messages: [...chat.messages, { role: "assistant", content: "" }],
+        },
+      };
+    });
+
+    setStreaming(true);
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // keep simple; you can pass full history later
+          messages: [{ role: "user", content: userText }],
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        setStreaming(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantText = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+
+          const token = line.replace("data:", "").trim();
+          if (!token || token === "[DONE]") continue;
+
+          // nicer spacing than token-by-token glue
+          const needsSpace =
+            assistantText.length > 0 &&
+            !assistantText.endsWith(" ") &&
+            !/^[,.;:!?)]/.test(token) &&
+            !token.startsWith("'") &&
+            !token.startsWith("’");
+
+          assistantText += (needsSpace ? " " : "") + token;
+
+          setChats((prev) => {
+            const chat = prev[activeId];
+            const updated = [...chat.messages];
+            updated[updated.length - 1] = { role: "assistant", content: assistantText };
+            return { ...prev, [activeId]: { ...chat, messages: updated } };
+          });
+        }
+      }
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  return (
+    <>
+      {/* ✅ Minimal CSS so UI won’t look “broken” even if global CSS missing */}
+      <style jsx global>{`
+        :root {
+          --border: #e5e7eb;
+          --panel: #ffffff;
+          --bg: #ffffff;
+          --text: #111827;
+          --muted: #6b7280;
+        }
+        body {
+          margin: 0;
+          background: var(--bg);
+          color: var(--text);
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        }
+        .sidebar {
+          width: 260px;
+          border-right: 1px solid var(--border);
+          padding: 12px;
+          box-sizing: border-box;
+        }
+        .new-btn {
+          width: 100%;
+          padding: 10px 12px;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          background: var(--panel);
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .chat-list {
+          margin-top: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .chat-item {
+          padding: 10px 10px;
+          border-radius: 10px;
+          cursor: pointer;
+          border: 1px solid transparent;
+          color: var(--text);
+        }
+        .chat-item:hover {
+          background: #f3f4f6;
+        }
+        .chat-item.active {
+          background: #eef2ff;
+          border-color: #c7d2fe;
+        }
+        .tabs button {
+          padding: 6px 10px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--panel);
+        }
+        .tabs button.active {
+          font-weight: 700;
+        }
+        .input-bar {
+          padding: 12px;
+          border-top: 1px solid var(--border);
+          display: flex;
+          gap: 10px;
+          align-items: flex-end;
+        }
+        .input-bar textarea {
+          flex: 1;
+          resize: none;
+          min-height: 44px;
+          max-height: 140px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          outline: none;
+          font-size: 14px;
+        }
+        .input-bar button {
+          padding: 10px 14px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: #2563eb;
+          color: white;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .input-bar button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .msg {
+          max-width: 860px;
+          margin: 0 auto 14px;
+          line-height: 1.5;
+        }
+        .msg .label {
+          font-weight: 800;
+          margin-right: 6px;
+        }
+      `}</style>
+
+      <div style={{ display: "flex", height: "100vh" }}>
+        <aside className="sidebar">
+          <button className="new-btn" onClick={newChat}>
+            + New chat
+          </button>
+
+          <div className="chat-list">
+            {Object.entries(chats).map(([id, chat]) => (
+              <div
+                key={id}
+                className={`chat-item ${id === activeId ? "active" : ""}`}
+                onClick={() => setActiveId(id)}
+              >
+                {chat.title}
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <header
+            style={{
+              padding: "10px 14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderBottom: "1px solid var(--border)",
+            }}
+          >
+            <div className="tabs">
+              <button className="active">Chat</button>
+            </div>
+            <button
+              style={{
+                border: "1px solid var(--border)",
+                padding: "6px 12px",
+                borderRadius: 10,
+                background: "var(--panel)",
+                cursor: "pointer",
+              }}
+              title="Theme toggle can be wired later"
+            >
+              🌙 Dark
+            </button>
+          </header>
+
+          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+            {activeChat?.messages.map((m, i) => (
+              <div key={i} className="msg">
+                <span className="label">{m.role === "user" ? "You" : "KLYNX"}:</span>
+                <span>{m.content}</span>
+              </div>
+            ))}
+            <div ref={bottomRef} />
+          </div>
+
+          <div className="input-bar">
+            <textarea
+              placeholder="Message KLYNX…"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+            />
+            <button onClick={sendMessage} disabled={streaming || !activeId}>
+              {streaming ? "..." : "Send"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+

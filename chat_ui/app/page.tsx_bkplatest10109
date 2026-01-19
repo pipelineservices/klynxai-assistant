@@ -1,0 +1,301 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function uid() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+}
+
+/**
+ * Parse one SSE "event block" (can have multiple `data:` lines).
+ * CRITICAL: preserve leading spaces from the token payload.
+ */
+function parseSSEDataBlock(block: string): string {
+  const lines = block.split("\n");
+  let out = "";
+
+  for (const line of lines) {
+    if (!line.startsWith("data:")) continue;
+
+    // Remove ONLY "data:" prefix
+    let part = line.slice(5);
+
+    // Remove ONLY ONE optional separator space after "data:"
+    if (part.startsWith(" ")) part = part.slice(1);
+
+    // IMPORTANT: do NOT trim part; leading spaces are meaningful for OpenAI deltas
+    out += part;
+  }
+
+  return out;
+}
+
+/**
+ * Minimal, production-safe token joiner.
+ * - Trust OpenAI for spaces (tokens often start with " ")
+ * - Keep newlines
+ * - Fix "1" + "." => "1." and ensure "1." + "Word" becomes "1. Word"
+ */
+function smartAppend(prev: string, token: string): string {
+  if (!prev) return token;
+
+  if (token.startsWith("\n")) return prev + token;
+
+  // Join list numbers: "1" + "." => "1."
+  if (/[0-9]$/.test(prev) && token === ".") return prev + token;
+
+  // If prev ends with "1." and token starts with a letter, ensure a space
+  if (/[0-9]\.$/.test(prev) && /^[A-Za-z]/.test(token)) return prev + " " + token;
+
+  // Default: OpenAI already includes correct spaces in token
+  return prev + token;
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Buffer for partial SSE chunks
+  const sseBuffer = useRef("");
+
+  /* ---------- Init ---------- */
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {}
+    }
+    const first = { id: uid(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  /* ---------- Send ---------- */
+
+  async function send(textOverride?: string) {
+    if (!active || streaming) return;
+
+    const text = (textOverride ?? input).trim();
+    if (!text) return;
+
+    setInput("");
+    setStreaming(true);
+    sseBuffer.current = "";
+
+    const userMsg: Message = { role: "user", content: text };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length ? s.title : text.slice(0, 40),
+              messages: [...s.messages, userMsg, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    abortRef.current = new AbortController();
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...active.messages, userMsg] }),
+        signal: abortRef.current.signal,
+      });
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        // Append chunk to SSE buffer
+        sseBuffer.current += decoder.decode(value, { stream: true });
+
+        // Split completed events by blank line
+        const blocks = sseBuffer.current.split("\n\n");
+        sseBuffer.current = blocks.pop() || "";
+
+        for (const block of blocks) {
+          const token = parseSSEDataBlock(block);
+
+          if (!token) continue;
+
+          if (token === "[DONE]") {
+            setStreaming(false);
+            return;
+          }
+
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id !== activeId) return s;
+              const msgs = [...s.messages];
+              const last = msgs[msgs.length - 1];
+              last.content = smartAppend(last.content, token);
+              return { ...s, messages: msgs };
+            })
+          );
+        }
+      }
+    } catch (err) {
+      console.error("stream error", err);
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  /* ---------- UI ---------- */
+
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      <aside style={{ width: 260, borderRight: "1px solid #e5e7eb", padding: 12 }}>
+        <button
+          onClick={() => {
+            const id = uid();
+            setSessions([{ id, title: "New chat", messages: [] }, ...sessions]);
+            setActiveId(id);
+          }}
+        >
+          + New chat
+        </button>
+
+        {sessions.map((s) => (
+          <div
+            key={s.id}
+            onClick={() => setActiveId(s.id)}
+            style={{
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 8,
+              background: s.id === activeId ? "#2563eb" : "transparent",
+              color: s.id === activeId ? "#fff" : "#000",
+              cursor: "pointer",
+            }}
+          >
+            {s.title}
+          </div>
+        ))}
+      </aside>
+
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 16,
+          }}
+        >
+          {active?.messages.map((m, i) => (
+            <div
+              key={i}
+              style={{
+                maxWidth: 820,
+                marginBottom: 16,
+                padding: 14,
+                borderRadius: 12,
+                background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                color: m.role === "assistant" ? "#000" : "#fff",
+                marginLeft: m.role === "assistant" ? 0 : "auto",
+                overflowWrap: "anywhere", // prevent horizontal overflow
+              }}
+            >
+              {m.role === "assistant" ? (
+                <div style={{ whiteSpace: "pre-wrap" }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          style={{ borderTop: "1px solid #e5e7eb", padding: 12 }}
+        >
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={2}
+            placeholder="Ask anything…"
+            style={{ width: "100%", padding: 10 }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+          <div style={{ textAlign: "right", marginTop: 6 }}>
+            <button disabled={streaming}>Send</button>
+          </div>
+        </form>
+      </main>
+    </div>
+  );
+}
+

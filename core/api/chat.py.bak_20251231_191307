@@ -1,0 +1,99 @@
+from fastapi import APIRouter, Header, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from typing import List
+import os
+import uuid
+from pathlib import Path
+from openai import OpenAI
+
+router = APIRouter()
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+SYSTEM_PROMPT_PATH = Path("/opt/klynxaiagent/core/prompts/system.txt")
+
+
+def load_system_prompt():
+    try:
+        return SYSTEM_PROMPT_PATH.read_text().strip()
+    except Exception:
+        return "You are a helpful assistant."
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    actions: list
+    request_id: str
+
+
+# -----------------------------
+# NORMAL (non-streaming) CHAT
+# -----------------------------
+@router.post("/api/chat", response_model=ChatResponse)
+def chat(req: ChatRequest, x_api_key: str | None = Header(default=None)):
+
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
+
+    system_prompt = load_system_prompt()
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend({"role": m.role, "content": m.content} for m in req.messages)
+
+    completion = client.chat.completions.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        messages=messages,
+        temperature=0.3,
+    )
+
+    return ChatResponse(
+        reply=completion.choices[0].message.content,
+        actions=[],
+        request_id=str(uuid.uuid4()),
+    )
+
+
+# -----------------------------
+# STREAMING CHAT (SSE)
+# -----------------------------
+@router.post("/api/chat/stream")
+def chat_stream(req: ChatRequest):
+
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set")
+
+    system_prompt = load_system_prompt()
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend({"role": m.role, "content": m.content} for m in req.messages)
+
+    def event_generator():
+        stream = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            messages=messages,
+            temperature=0.3,
+            stream=True,
+        )
+
+        for chunk in stream:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield f"data: {delta.content}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+    )
+

@@ -1,0 +1,22 @@
+{
+  "incidents": [
+    {
+      "id": "4ebfaf04-2cf6-499c-af4c-f84e8720043b",
+      "created_at": 1766174550,
+      "source": "CHAT",
+      "severity": "P2",
+      "status": "OPEN",
+      "title": "User reported issue: unable to delete vpc",
+      "description": "unable to delete vpc"
+    },
+    {
+      "id": "44a0f3f4-a457-4c6d-8006-ec8aa91ec82c",
+      "created_at": 1766182222,
+      "source": "CHAT",
+      "severity": "P2",
+      "status": "OPEN",
+      "title": "User reported issue: unable to delete vpc",
+      "description": "unable to delete vpc"
+    }
+  ]
+}

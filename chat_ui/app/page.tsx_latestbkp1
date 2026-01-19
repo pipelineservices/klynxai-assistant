@@ -1,0 +1,614 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+/* ---------------- Types ---------------- */
+
+type Role = "user" | "assistant";
+
+type Message = {
+  role: Role;
+  content: string;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Message[];
+};
+
+const STORAGE_KEY = "klynx_chat_sessions";
+
+/* ---------------- Utils ---------------- */
+
+function safeId() {
+  return "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function normalizeAssistantText(text: string) {
+  // Keep light normalization (safe) without altering token spacing behavior
+  return (text || "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * ✅ Minimal streaming fix:
+ * NO spacing heuristics.
+ * We append deltas exactly as the backend sends them.
+ */
+function appendRaw(prev: string, token: string) {
+  if (!prev) return token || "";
+
+  // add space ONLY between word characters (ChatGPT-style)
+  if (/\w$/.test(prev) && /^\w/.test(token)) {
+    return prev + " " + token;
+  }
+
+  return prev + token;
+}
+
+/**
+ * Proper SSE parser:
+ * - Splits on blank line (\n\n)
+ * - Extracts ONLY the "data:" lines and joins them
+ * - Returns events + remaining buffer
+ */
+function parseSSE(raw: string): { events: string[]; rest: string } {
+  const events: string[] = [];
+  let buffer = raw;
+
+  while (true) {
+    const idx = buffer.indexOf("\n\n");
+    if (idx === -1) break;
+
+    const block = buffer.slice(0, idx);
+    buffer = buffer.slice(idx + 2);
+
+    const lines = block.split("\n");
+    const data = lines
+      .filter((l) => l.startsWith("data:"))
+      .map((l) => l.replace(/^data:\s*/, ""))
+      .join("");
+
+    if (data) events.push(data);
+  }
+
+  return { events, rest: buffer };
+}
+
+/** Small helper: try to extract delta from JSON chunks if backend sends JSON */
+function extractDelta(chunk: string): string {
+  const t = (chunk || "").trim();
+  if (!t) return "";
+
+  // common backend end marker
+  if (t === "[DONE]") return t;
+
+  // If backend sometimes sends JSON per event, support it safely
+  if ((t.startsWith("{") && t.endsWith("}")) || (t.startsWith("[") && t.endsWith("]"))) {
+    try {
+      const obj: any = JSON.parse(t);
+      const delta =
+        obj?.delta ??
+        obj?.content ??
+        obj?.text ??
+        (typeof obj === "string" ? obj : null);
+
+      if (typeof delta === "string") return delta;
+      return "";
+    } catch {
+      // not json, treat as plain text
+      return chunk;
+    }
+  }
+
+  return chunk;
+}
+
+/* ---------------- Page ---------------- */
+
+export default function Page() {
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+
+  // ✅ REQUIRED: streaming state + abort controller
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamControllerRef = useRef<AbortController | null>(null);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // streaming buffers
+  const sseBuffer = useRef("");
+  const assistantBuffer = useRef("");
+
+  /* ---------- Init ---------- */
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.length) {
+          setSessions(parsed);
+          setActiveId(parsed[0].id);
+          return;
+        }
+      } catch {}
+    }
+    const first: ChatSession = { id: safeId(), title: "New chat", messages: [] };
+    setSessions([first]);
+    setActiveId(first.id);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [sessions, isStreaming]);
+
+  const active = useMemo(
+    () => sessions.find((s) => s.id === activeId),
+    [sessions, activeId]
+  );
+
+  /* ---------- IMPORTANT: reset state when switching chat ---------- */
+  useEffect(() => {
+    // Abort any in-flight stream
+    streamControllerRef.current?.abort();
+    streamControllerRef.current = null;
+
+    // Reset streaming/UI buffers so old chat won't break send/enter
+    setIsStreaming(false);
+    sseBuffer.current = "";
+    assistantBuffer.current = "";
+  }, [activeId]);
+
+  /* ---------- Actions ---------- */
+
+  function newChat() {
+    const id = safeId();
+    setSessions((p) => [{ id, title: "New chat", messages: [] }, ...p]);
+    setActiveId(id);
+  }
+
+  function deleteChat(id: string) {
+    // If deleting active chat, move to another chat (or create one)
+    setSessions((prev) => {
+      const remaining = prev.filter((s) => s.id !== id);
+      const next = remaining.length
+        ? remaining
+        : [{ id: safeId(), title: "New chat", messages: [] }];
+      if (id === activeId) {
+        setActiveId(next[0].id);
+      }
+      return next;
+    });
+  }
+
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text || "");
+  }
+
+  function stopStreaming() {
+    streamControllerRef.current?.abort();
+    streamControllerRef.current = null;
+    setIsStreaming(false);
+  }
+
+  function regenerate(index: number) {
+    if (!active) return;
+    for (let i = index - 1; i >= 0; i--) {
+      if (active.messages[i].role === "user") {
+        void send(active.messages[i].content);
+        return;
+      }
+    }
+  }
+
+  /* ---------- Send ---------- */
+
+  async function send(forced?: string) {
+    const text = (forced ?? input).trim();
+    if (!text || isStreaming || !active) return;
+
+    setInput("");
+    setIsStreaming(true);
+
+    // Reset streaming buffers each send
+    sseBuffer.current = "";
+    assistantBuffer.current = "";
+
+    // Add user + placeholder assistant
+    const userMsg: Message = { role: "user", content: text };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeId
+          ? {
+              ...s,
+              title: s.messages.length === 0 ? text.slice(0, 40) : s.title,
+              messages: [...s.messages, userMsg, { role: "assistant", content: "" }],
+            }
+          : s
+      )
+    );
+
+    // Build request messages using current active snapshot (safe)
+    const baseMessages = [...active.messages, userMsg].map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    streamControllerRef.current = new AbortController();
+
+    try {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: streamControllerRef.current.signal,
+        body: JSON.stringify({ messages: baseMessages }),
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error(`Stream failed: ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        sseBuffer.current += decoder.decode(value, { stream: true });
+
+        const { events, rest } = parseSSE(sseBuffer.current);
+        sseBuffer.current = rest;
+
+        for (const rawChunk of events) {
+          const chunk = extractDelta(rawChunk);
+
+          if (chunk === "[DONE]") {
+            setIsStreaming(false);
+            streamControllerRef.current = null;
+            return;
+          }
+
+          // Optional backend error surface
+          if (chunk.startsWith("[ERROR]")) {
+            setSessions((prev) =>
+              prev.map((s) => {
+                if (s.id !== activeId) return s;
+                const msgs = [...s.messages];
+                msgs[msgs.length - 1] = { role: "assistant", content: chunk };
+                return { ...s, messages: msgs };
+              })
+            );
+            setIsStreaming(false);
+            streamControllerRef.current = null;
+            return;
+          }
+
+          // ✅ Minimal fix: append exactly (NO added spaces)
+          assistantBuffer.current = appendRaw(assistantBuffer.current, chunk);
+
+          setSessions((prev) =>
+            prev.map((s) => {
+              if (s.id !== activeId) return s;
+              const msgs = [...s.messages];
+              msgs[msgs.length - 1] = {
+                role: "assistant",
+                content: assistantBuffer.current,
+              };
+              return { ...s, messages: msgs };
+            })
+          );
+        }
+      }
+    } catch (e: any) {
+      // If aborted, just exit cleanly
+      if (e?.name === "AbortError") {
+        return;
+      }
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== activeId) return s;
+          const msgs = [...s.messages];
+          msgs[msgs.length - 1] = {
+            role: "assistant",
+            content: `⚠️ Streaming error: ${e?.message || String(e)}`,
+          };
+          return { ...s, messages: msgs };
+        })
+      );
+    } finally {
+      setIsStreaming(false);
+      streamControllerRef.current = null;
+    }
+  }
+
+  /* ---------- UI ---------- */
+
+  const activeMessages = active?.messages ?? [];
+
+  return (
+    <div style={{ display: "flex", height: "100vh", background: "#fff" }}>
+      {/* Sidebar */}
+      <aside
+        style={{
+          width: 280,
+          padding: 12,
+          borderRight: "1px solid #e5e7eb",
+          background: "#f9fafb",
+        }}
+      >
+        <button
+          onClick={newChat}
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #d1d5db",
+            background: "#fff",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+        >
+          + New chat
+        </button>
+
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              onClick={() => setActiveId(s.id)}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                background: s.id === activeId ? "#2563eb" : "#fff",
+                color: s.id === activeId ? "#fff" : "#111827",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 14,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {s.title || "New chat"}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteChat(s.id);
+                }}
+                title="Delete chat"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.35)",
+                  background: s.id === activeId ? "rgba(255,255,255,0.15)" : "#f3f4f6",
+                  color: s.id === activeId ? "#fff" : "#111827",
+                  borderRadius: 8,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                }}
+              >
+                🗑
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 24,
+            background: "#fff",
+          }}
+        >
+          {/* Gemini-ish centered column */}
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            {activeMessages.map((m, i) => {
+              const isLast = i === activeMessages.length - 1;
+              const showCursor = isStreaming && isLast && m.role === "assistant";
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    maxWidth: 900,
+                    marginBottom: 18,
+                    padding: 16,
+                    borderRadius: 14,
+                    background: m.role === "assistant" ? "#e5e7eb" : "#2563eb",
+                    color: m.role === "assistant" ? "#111827" : "#fff",
+                    marginLeft: m.role === "assistant" ? 0 : "auto",
+                    boxShadow: m.role === "assistant" ? "0 1px 0 rgba(0,0,0,0.04)" : "none",
+                  }}
+                >
+                  {m.role === "assistant" ? (
+                    <>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {normalizeAssistantText(m.content)}
+                      </ReactMarkdown>
+
+                      {/* Typing cursor ▍ (render-only, never stored) */}
+                      {showCursor ? (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            marginLeft: 2,
+                            fontWeight: 700,
+                            opacity: 0.9,
+                            animation: "blink 1s steps(1, end) infinite",
+                          }}
+                        >
+                          ▍
+                        </span>
+                      ) : null}
+
+                      {/* Action Bar */}
+                      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => copyText(m.content)}
+                          style={{
+                            border: "1px solid #d1d5db",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          📋 Copy
+                        </button>
+
+                        <button
+                          onClick={() => regenerate(i)}
+                          style={{
+                            border: "1px solid #d1d5db",
+                            background: "#fff",
+                            borderRadius: 10,
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          🔄 Regenerate
+                        </button>
+
+                        {isStreaming && isLast && (
+                          <button
+                            onClick={stopStreaming}
+                            style={{
+                              border: "1px solid #d1d5db",
+                              background: "#fff",
+                              borderRadius: 10,
+                              padding: "6px 10px",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                            }}
+                          >
+                            🔥 Stop
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    m.content
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+          style={{
+            padding: 16,
+            borderTop: "1px solid #e5e7eb",
+            background: "#fff",
+          }}
+        >
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              rows={2}
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
+                outline: "none",
+                resize: "none",
+              }}
+              placeholder="Ask anything…"
+              disabled={isStreaming}
+              onKeyDown={(e) => {
+                // Enter submits, Shift+Enter newline
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send();
+                }
+              }}
+            />
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10, gap: 8 }}>
+              {isStreaming ? (
+                <button
+                  type="button"
+                  onClick={stopStreaming}
+                  style={{
+                    border: "1px solid #d1d5db",
+                    background: "#fff",
+                    borderRadius: 10,
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  🔥 Stop
+                </button>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={isStreaming || !input.trim()}
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: isStreaming || !input.trim() ? "#f3f4f6" : "#2563eb",
+                  color: isStreaming || !input.trim() ? "#6b7280" : "#fff",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                  cursor: isStreaming || !input.trim() ? "not-allowed" : "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* Cursor blink keyframes */}
+        <style jsx global>{`
+          @keyframes blink {
+            0% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </main>
+    </div>
+  );
+}
+
