@@ -11,7 +11,6 @@ from core.providers import get_llm_provider
 from core.storage import IncidentStore
 
 # Routers
-from core.api.slack import router as slack_router
 from core.api.otel import router as otel_router
 from core.api.incidents import router as incidents_router
 from core.api.autofix import router as autofix_router
@@ -22,7 +21,6 @@ store = IncidentStore(path=os.getenv("INCIDENT_STORE_PATH", "/opt/klynxaiagent/r
 llm = get_llm_provider()
 
 # Mount routers
-app.include_router(slack_router)       # /api/slack/events, /api/slack/actions
 app.include_router(otel_router)        # /api/otel/ingest
 app.include_router(incidents_router)   # /api/incidents...
 app.include_router(autofix_router)
@@ -132,4 +130,3 @@ def skip_autofix(incident_id: str, body: Dict[str, Any]):
     store.upsert(rec)
 
     return {"ok": True, "message": "Skipped.", "incident_id": incident_id}
-

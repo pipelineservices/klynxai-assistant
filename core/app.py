@@ -6,7 +6,6 @@ import json
 import importlib
 from typing import Any, Dict, List, Optional
 
-import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -23,7 +22,10 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     messages: List[ChatMessage]
+    attachments: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class Action(BaseModel):
@@ -100,6 +102,11 @@ def notify_slack(text: str) -> None:
     """
     url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
     if not url:
+        return
+
+    try:
+        import requests
+    except Exception:
         return
 
     try:
@@ -205,7 +212,7 @@ def create_incident_api(payload: Dict[str, Any]):
     summary = str(payload.get("summary", "incident"))
     desc = str(payload.get("description", ""))
     inc = create_incident(summary=summary, description=desc, source="api")
-    notify_slack(f"🟠 *Incident created* `{inc['id']}`\n*Summary:* {inc['summary']}")
+    notify_slack(f"*Incident created* `{inc['id']}`\n*Summary:* {inc['summary']}")
     return inc
 
 @app.post("/api/incidents/{incident_id}/action")
@@ -221,12 +228,12 @@ def action_incident(incident_id: str, payload: Dict[str, Any]):
         }
 
     INCIDENTS[incident_id]["status"] = action
-    notify_slack(f"🟣 *Incident update* `{incident_id}` → *{action}*")
+    notify_slack(f"*Incident update* `{incident_id}` -> *{action}*")
     return {"incident_id": incident_id, "action": action, "status": "updated"}
 
 
 # ------------------------------------------------------------
-# OTEL ingest → incident + slack
+# OTEL ingest -> incident + slack
 # ------------------------------------------------------------
 
 @app.post("/api/otel/ingest")
@@ -241,7 +248,7 @@ def otel_ingest(req: OTelIngestRequest):
             source="otel",
         )
         notify_slack(
-            f"🚨 *OTEL Incident* `{inc['id']}`\n"
+            f"*OTEL Incident* `{inc['id']}`\n"
             f"*Severity:* {sev}\n"
             f"*Service:* {req.service}\n"
             f"*Message:* {req.message}\n"
@@ -250,7 +257,7 @@ def otel_ingest(req: OTelIngestRequest):
         return {"ok": True, "incident_id": inc["id"]}
 
     # Non-incident telemetry
-    notify_slack(f"ℹ️ OTEL `{req.service}` [{sev}]: {req.message}")
+    notify_slack(f"OTEL `{req.service}` [{sev}]: {req.message}")
     return {"ok": True}
 
 
@@ -321,4 +328,3 @@ async def chat_stream(req: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
-

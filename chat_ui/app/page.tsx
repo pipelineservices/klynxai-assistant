@@ -663,7 +663,6 @@ export default function Page() {
   ];
 
   const moreMenuItems = [
-    { id: "search", label: "Search Chats", emoji: "🔍", action: "focus-search" },
     { id: "images", label: "Images", emoji: "🖼", action: "open-attachments" },
     { id: "social", label: "Social", emoji: "🌐", action: "placeholder" },
     { id: "apps", label: "Apps", emoji: "🧩", action: "placeholder" },
@@ -1265,7 +1264,6 @@ export default function Page() {
             ref={searchInputRef}
             value={chatSearch}
             onChange={(e) => setChatSearch(e.target.value)}
-            placeholder="Search chats"
             style={{
               width: "100%",
               padding: "6px 8px",

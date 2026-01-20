@@ -5,8 +5,10 @@ class LocalLLM(BaseLLM):
     def chat(self, messages: List[Dict[str, str]]) -> str:
         last = ""
         for m in messages:
-            if m.get("role") == "user":
-                last = m.get("content", "")
+            role = getattr(m, "role", None) if not isinstance(m, dict) else m.get("role")
+            content = getattr(m, "content", "") if not isinstance(m, dict) else m.get("content", "")
+            if role == "user":
+                last = content or ""
         return (
             "RequestId: local-dev\n\n"
             "✅ Understood.\n\n"
@@ -15,4 +17,3 @@ class LocalLLM(BaseLLM):
             "### Next best step\n"
             "- Share the exact error text / service name / region, and I’ll produce root cause + fix plan.\n"
         )
-
