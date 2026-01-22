@@ -1,0 +1,15 @@
+[Unit]
+Description=Klynx Retail Core API
+After=network.target
+
+[Service]
+Type=simple
+User=klynxretail
+WorkingDirectory=/opt/klynxretail/core
+Environment=KLYNX_RETAIL_PORT=9200
+ExecStart=/opt/klynxretail/core/.venv/bin/python /opt/klynxretail/core/main.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

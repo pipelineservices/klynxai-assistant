@@ -1,0 +1,14 @@
+[Unit]
+Description=Klynx Retail Slack Service
+After=network.target
+
+[Service]
+Type=simple
+User=klynxretail
+WorkingDirectory=/opt/klynxretail/slack
+ExecStart=/opt/klynxretail/slack/.venv/bin/uvicorn app:app --host 0.0.0.0 --port 9101
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
