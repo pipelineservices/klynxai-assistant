@@ -39,3 +39,64 @@ def write_event(event: str, session_id: str, metadata: Dict[str, Any]) -> None:
             "INSERT INTO events (event, session_id, metadata) VALUES (?, ?, ?)",
             (event, session_id, str(metadata)),
         )
+
+
+def summary_last_24h() -> Dict[str, Any]:
+    init_db()
+    with _lock, _connect() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COUNT(*) FROM events WHERE ts >= datetime('now','-1 day')"
+        )
+        total = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM events WHERE event='page.view' AND ts >= datetime('now','-1 day')"
+        )
+        views = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM events WHERE event='chat.submit' AND ts >= datetime('now','-1 day')"
+        )
+        chats = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COUNT(*) FROM events WHERE event='cart.export' AND ts >= datetime('now','-1 day')"
+        )
+        exports = cur.fetchone()[0]
+        conversion = f\"{(exports / chats * 100):.1f}%\" if chats else "0%"
+
+        cur.execute(
+            \"\"\"SELECT metadata FROM events
+               WHERE event='chat.submit' AND ts >= datetime('now','-1 day')
+               ORDER BY ts DESC LIMIT 200\"\"\"
+        )
+        raw = [r[0] for r in cur.fetchall()]
+        counts: Dict[str, int] = {}
+        for m in raw:
+            text = ""
+            if isinstance(m, str):
+                # metadata stored as stringified dict
+                if "text" in m:
+                    text = m.split(\"'text':\", 1)[-1].strip().strip(\"{} \").strip(\"'\").strip('\"')
+            if text:
+                counts[text] = counts.get(text, 0) + 1
+        top_queries = [
+            {"query": q, "count": c}
+            for q, c in sorted(counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
+
+        cur.execute(
+            \"\"\"SELECT ts, event, session_id
+               FROM events ORDER BY ts DESC LIMIT 50\"\"\"
+        )
+        events = [
+            {"ts": r[0], "event": r[1], "session_id": r[2]} for r in cur.fetchall()
+        ]
+
+    return {
+        "total": total,
+        "views": views,
+        "chats": chats,
+        "exports": exports,
+        "conversion": conversion,
+        "top_queries": top_queries,
+        "events": events,
+    }

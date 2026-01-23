@@ -83,6 +83,10 @@ def create_cart(req: CartRequest):
         checkout_url=checkout_url,
     )
 
+@app.get("/api/analytics/summary")
+def analytics_summary():
+    return analytics.summary_last_24h()
+
 # Serve embed widget assets
 app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")
 

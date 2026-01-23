@@ -81,3 +81,7 @@ Attach the drawer to an existing header button:
 </script>
 <script src="https://retail.klynxai.com/embed/widget.js"></script>
 ```
+
+## Partner dashboard
+
+Open `https://retail.klynxai.com/dashboard.html` to view summary metrics.

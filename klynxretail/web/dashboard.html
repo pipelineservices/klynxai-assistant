@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Klynx Retail Partner Dashboard</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">Partner Dashboard</div>
+      <div class="sub">Usage and conversion snapshot</div>
+    </header>
+
+    <main class="main dash">
+      <section class="panel stats">
+        <div class="panel-title">Summary (last 24h)</div>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Views</div>
+            <div class="stat-value" id="statViews">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Chats</div>
+            <div class="stat-value" id="statChats">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Cart Exports</div>
+            <div class="stat-value" id="statExports">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Conversion</div>
+            <div class="stat-value" id="statConv">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Top Queries (last 24h)</div>
+        <ul id="topQueries" class="dash-list"></ul>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Events (last 50)</div>
+        <div id="events" class="events"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/dashboard.js"></script>
+</body>
+</html>
