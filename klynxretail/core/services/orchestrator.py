@@ -1,10 +1,15 @@
 from typing import List
 from core.connectors.mock import MockConnector
+from core.connectors.mcp_connector import MCPConnector
 from core.models import Product
+from core import settings
 
 class Orchestrator:
     def __init__(self) -> None:
-        self.connectors = [MockConnector()]
+        if settings.MCP_ENABLED:
+            self.connectors = [MCPConnector()]
+        else:
+            self.connectors = [MockConnector()]
 
     def search(self, query: str, limit: int = 5) -> List[Product]:
         results: List[Product] = []

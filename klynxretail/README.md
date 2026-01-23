@@ -29,3 +29,15 @@ Retailer-agnostic shopping assistant demo with mock data.
 ## Notes
 - This PoC uses mock retailer data.
 - Replace `core/connectors/mock.py` with real connectors when you get API access.
+
+## MCP integration (optional)
+
+Enable MCP to fetch catalog data from an MCP server instead of mock data.
+
+Environment variables:
+- `KLYNX_MCP_ENABLED=true`
+- `KLYNX_MCP_ENDPOINT=http://127.0.0.1:9090/mcp`
+- `KLYNX_MCP_AUTH_TOKEN=...` (optional)
+- `KLYNX_MCP_PROTOCOL_VERSION=2025-03-26`
+- `KLYNX_MCP_TOOL_CATALOG_SEARCH=catalog.search`
+- `KLYNX_MCP_TIMEOUT_S=10`
