@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import threading
@@ -37,7 +38,7 @@ def write_event(event: str, session_id: str, metadata: Dict[str, Any]) -> None:
     with _lock, _connect() as conn:
         conn.execute(
             "INSERT INTO events (event, session_id, metadata) VALUES (?, ?, ?)",
-            (event, session_id, str(metadata)),
+            (event, session_id, json.dumps(metadata)),
         )
 
 
@@ -61,21 +62,23 @@ def summary_last_24h() -> Dict[str, Any]:
             "SELECT COUNT(*) FROM events WHERE event='cart.export' AND ts >= datetime('now','-1 day')"
         )
         exports = cur.fetchone()[0]
-        conversion = f\"{(exports / chats * 100):.1f}%\" if chats else "0%"
+        conversion = f"{(exports / chats * 100):.1f}%" if chats else "0%"
 
         cur.execute(
-            \"\"\"SELECT metadata FROM events
+            """SELECT metadata FROM events
                WHERE event='chat.submit' AND ts >= datetime('now','-1 day')
-               ORDER BY ts DESC LIMIT 200\"\"\"
+               ORDER BY ts DESC LIMIT 200"""
         )
         raw = [r[0] for r in cur.fetchall()]
         counts: Dict[str, int] = {}
         for m in raw:
             text = ""
             if isinstance(m, str):
-                # metadata stored as stringified dict
-                if "text" in m:
-                    text = m.split(\"'text':\", 1)[-1].strip().strip(\"{} \").strip(\"'\").strip('\"')
+                try:
+                    obj = json.loads(m)
+                    text = obj.get("text", "")
+                except json.JSONDecodeError:
+                    pass
             if text:
                 counts[text] = counts.get(text, 0) + 1
         top_queries = [
@@ -84,8 +87,8 @@ def summary_last_24h() -> Dict[str, Any]:
         ]
 
         cur.execute(
-            \"\"\"SELECT ts, event, session_id
-               FROM events ORDER BY ts DESC LIMIT 50\"\"\"
+            """SELECT ts, event, session_id
+               FROM events ORDER BY ts DESC LIMIT 50"""
         )
         events = [
             {"ts": r[0], "event": r[1], "session_id": r[2]} for r in cur.fetchall()
