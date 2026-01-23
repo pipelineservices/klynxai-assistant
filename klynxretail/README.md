@@ -85,3 +85,7 @@ Attach the drawer to an existing header button:
 ## Partner dashboard
 
 Open `https://retail.klynxai.com/dashboard.html` to view summary metrics.
+
+Optional protection:
+- Set `KLYNX_RETAIL_DASHBOARD_TOKEN=yourtoken`
+- Access with `https://retail.klynxai.com/dashboard.html?token=yourtoken`

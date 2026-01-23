@@ -1,6 +1,7 @@
 from __future__ import annotations
 import uuid
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest, CartRequest, CartResponse
@@ -19,6 +20,18 @@ app.add_middleware(
 
 orchestrator = Orchestrator()
 
+def _dashboard_allowed(request: Request) -> bool:
+    if not settings.DASHBOARD_TOKEN:
+        return True
+    token = request.query_params.get("token") or request.headers.get("X-Dashboard-Token")
+    return token == settings.DASHBOARD_TOKEN
+
+@app.middleware("http")
+async def dashboard_auth(request: Request, call_next):
+    if request.url.path in ("/dashboard.html", "/api/analytics/summary"):
+        if not _dashboard_allowed(request):
+            return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    return await call_next(request)
 @app.get("/health")
 def health():
     return {"status": "ok"}
