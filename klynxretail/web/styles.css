@@ -1,4 +1,5 @@
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body { margin: 0; font-family: Arial, sans-serif; background: #f6f7fb; color: #0f172a; }
 .app { max-width: 1200px; margin: 0 auto; padding: 24px; }
 .header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
@@ -31,3 +32,13 @@ body { margin: 0; font-family: Arial, sans-serif; background: #f6f7fb; color: #0
 .cmp-title { font-weight: 700; margin-bottom: 6px; }
 .cmp-list { margin: 0; padding-left: 18px; }
 .cmp-list li { margin: 4px 0; font-size: 13px; color: #0f172a; }
+
+/* Embed mode for Rufus-style widget */
+body.embed { background: #fff; }
+body.embed .app { max-width: none; padding: 0; height: 100%; }
+body.embed .header { display: none; }
+body.embed .panel { display: none; }
+body.embed .main { grid-template-columns: 1fr; height: 100%; }
+body.embed .chat { height: 100%; border-radius: 0; border: none; }
+body.embed .messages { padding: 12px; }
+body.embed .composer { border-top: 1px solid #e2e8f0; }

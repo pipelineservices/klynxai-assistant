@@ -41,3 +41,22 @@ Environment variables:
 - `KLYNX_MCP_PROTOCOL_VERSION=2025-03-26`
 - `KLYNX_MCP_TOOL_CATALOG_SEARCH=catalog.search`
 - `KLYNX_MCP_TIMEOUT_S=10`
+
+## Embed widget (Rufus-style)
+
+Add this script tag to any third-party site:
+
+```
+<script>
+  window.KlynxRetailWidget = {
+    baseUrl: "https://retail.klynxai.com",
+    label: "Rufus",
+    title: "Klynx Retail Assistant",
+    accent: "#2563eb",
+    position: "right"
+  };
+</script>
+<script src="https://retail.klynxai.com/embed/widget.js"></script>
+```
+
+This opens a right-side drawer using the embedded UI (`/?embed=1`).

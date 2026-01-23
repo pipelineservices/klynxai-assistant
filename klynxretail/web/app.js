@@ -3,6 +3,11 @@ const cards = document.getElementById("cards");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
 
+const params = new URLSearchParams(window.location.search);
+if (params.get("embed") === "1") {
+  document.body.classList.add("embed");
+}
+
 function addMessage(role, text) {
   const div = document.createElement("div");
   div.className = `msg ${role}`;

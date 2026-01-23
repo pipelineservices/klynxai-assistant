@@ -64,5 +64,8 @@ def chat(req: ChatRequest):
     reply = "\n".join(lines)
     return ChatResponse(request_id=str(uuid.uuid4()), reply=reply, items=items)
 
+# Serve embed widget assets
+app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")
+
 # Serve web demo
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
