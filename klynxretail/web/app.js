@@ -5,6 +5,9 @@ const sendBtn = document.getElementById("send");
 const embedBar = document.getElementById("embedBar");
 const embedLogo = document.getElementById("embedLogo");
 const embedTitle = document.getElementById("embedTitle");
+const exportCartBtn = document.getElementById("exportCart");
+const checkoutLink = document.getElementById("checkoutLink");
+let lastItems = [];
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("embed") === "1") {
@@ -65,6 +68,10 @@ function addComparison(items) {
 
 function renderCards(items) {
   cards.innerHTML = "";
+  lastItems = items || [];
+  exportCartBtn.disabled = !(lastItems && lastItems.length);
+  checkoutLink.classList.add("hidden");
+  checkoutLink.textContent = "";
   items.forEach((p) => {
     const card = document.createElement("div");
     card.className = "card";
@@ -125,7 +132,26 @@ async function send() {
   track("chat.response", { items: (data.items || []).length });
 }
 
+async function exportCart() {
+  if (!lastItems || !lastItems.length) return;
+  exportCartBtn.disabled = true;
+  track("cart.export", { items: lastItems.length });
+  const res = await fetch("/api/cart", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items: lastItems })
+  });
+  const data = await res.json();
+  if (data.checkout_url) {
+    checkoutLink.textContent = `Checkout link: ${data.checkout_url}`;
+    checkoutLink.classList.remove("hidden");
+    window.open(data.checkout_url, "_blank", "noopener,noreferrer");
+  }
+  exportCartBtn.disabled = false;
+}
+
 sendBtn.addEventListener("click", send);
+exportCartBtn.addEventListener("click", exportCart);
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();

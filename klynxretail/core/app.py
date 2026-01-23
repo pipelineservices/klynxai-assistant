@@ -3,7 +3,7 @@ import uuid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest
+from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest, CartRequest, CartResponse
 from core.services.orchestrator import Orchestrator
 from core import settings
 
@@ -68,6 +68,19 @@ def chat(req: ChatRequest):
 def events(req: EventRequest):
     # Basic sink for usage analytics; extend to store or forward later.
     return {"ok": True, "event": req.event}
+
+@app.post("/api/cart", response_model=CartResponse)
+def create_cart(req: CartRequest):
+    subtotal = sum(p.price for p in req.items)
+    cart_id = str(uuid.uuid4())
+    # Placeholder checkout URL; replace with real retailer cart integration.
+    checkout_url = f"{settings.CHECKOUT_BASE_URL}?cart_id={cart_id}"
+    return CartResponse(
+        cart_id=cart_id,
+        currency=req.currency,
+        subtotal=round(subtotal, 2),
+        checkout_url=checkout_url,
+    )
 
 # Serve embed widget assets
 app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")

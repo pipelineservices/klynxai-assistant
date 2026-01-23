@@ -40,3 +40,13 @@ class EventRequest(BaseModel):
     event: str
     session_id: str
     metadata: dict = {}
+
+class CartRequest(BaseModel):
+    items: List[Product]
+    currency: str = "USD"
+
+class CartResponse(BaseModel):
+    cart_id: str
+    currency: str
+    subtotal: float
+    checkout_url: str
