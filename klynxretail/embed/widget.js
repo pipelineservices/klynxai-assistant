@@ -4,6 +4,10 @@
   const label = cfg.label || "Rufus";
   const accent = cfg.accent || "#2563eb";
   const position = cfg.position || "right";
+  const brandName = cfg.brandName || "";
+  const brandLogo = cfg.brandLogo || "";
+  const launcher = cfg.launcher || "floating"; // "floating" or "header"
+  const targetSelector = cfg.targetSelector || "";
 
   const style = document.createElement("style");
   style.textContent = `
@@ -86,7 +90,10 @@
 
   const iframe = document.createElement("iframe");
   iframe.className = "klynx-retail-iframe";
-  iframe.src = `${baseUrl}/?embed=1`;
+  const qp = new URLSearchParams({ embed: "1" });
+  if (brandName) qp.set("brandName", brandName);
+  if (brandLogo) qp.set("brandLogo", brandLogo);
+  iframe.src = `${baseUrl}/?${qp.toString()}`;
   iframe.title = "Klynx Retail Assistant";
 
   header.appendChild(close);
@@ -101,15 +108,26 @@
     drawer.classList.remove("open");
   }
 
-  button.addEventListener("click", () => {
+  function toggleDrawer() {
     if (drawer.classList.contains("open")) {
       closeDrawer();
     } else {
       openDrawer();
     }
-  });
+  }
+
+  button.addEventListener("click", toggleDrawer);
   close.addEventListener("click", closeDrawer);
 
-  document.body.appendChild(button);
+  if (launcher === "header" && targetSelector) {
+    const target = document.querySelector(targetSelector);
+    if (target) {
+      target.addEventListener("click", toggleDrawer);
+    } else {
+      document.body.appendChild(button);
+    }
+  } else {
+    document.body.appendChild(button);
+  }
   document.body.appendChild(drawer);
 })();

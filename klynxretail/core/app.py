@@ -3,7 +3,7 @@ import uuid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse
+from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest
 from core.services.orchestrator import Orchestrator
 from core import settings
 
@@ -63,6 +63,11 @@ def chat(req: ChatRequest):
 
     reply = "\n".join(lines)
     return ChatResponse(request_id=str(uuid.uuid4()), reply=reply, items=items)
+
+@app.post("/api/events")
+def events(req: EventRequest):
+    # Basic sink for usage analytics; extend to store or forward later.
+    return {"ok": True, "event": req.event}
 
 # Serve embed widget assets
 app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")

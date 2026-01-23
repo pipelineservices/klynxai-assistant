@@ -35,3 +35,8 @@ class ChatResponse(BaseModel):
     request_id: str
     reply: str
     items: List[Product] = []
+
+class EventRequest(BaseModel):
+    event: str
+    session_id: str
+    metadata: dict = {}

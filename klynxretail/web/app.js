@@ -2,10 +2,35 @@ const messages = document.getElementById("messages");
 const cards = document.getElementById("cards");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("send");
+const embedBar = document.getElementById("embedBar");
+const embedLogo = document.getElementById("embedLogo");
+const embedTitle = document.getElementById("embedTitle");
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("embed") === "1") {
   document.body.classList.add("embed");
+}
+const brandName = params.get("brandName");
+const brandLogo = params.get("brandLogo");
+if (document.body.classList.contains("embed")) {
+  embedBar.classList.remove("hidden");
+  if (brandName) embedTitle.textContent = brandName;
+  if (brandLogo) {
+    embedLogo.src = brandLogo;
+    embedLogo.alt = brandName || "Brand";
+  } else {
+    embedLogo.classList.add("hidden");
+  }
+}
+
+const sessionId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+function track(event, metadata = {}) {
+  const payload = JSON.stringify({ event, session_id: sessionId, metadata });
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/events", payload);
+  } else {
+    fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
+  }
 }
 
 function addMessage(role, text) {
@@ -79,6 +104,7 @@ async function send() {
   if (!text) return;
   addMessage("user", text);
   input.value = "";
+  track("chat.submit", { text });
 
   const payload = {
     messages: [
@@ -96,6 +122,7 @@ async function send() {
   addMessage("assistant", data.reply || "Here are results.");
   renderCards(data.items || []);
   addComparison(data.items || []);
+  track("chat.response", { items: (data.items || []).length });
 }
 
 sendBtn.addEventListener("click", send);
@@ -105,3 +132,5 @@ input.addEventListener("keydown", (e) => {
     send();
   }
 });
+
+track("page.view", { embed: document.body.classList.contains("embed") });

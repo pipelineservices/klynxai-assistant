@@ -52,11 +52,32 @@ Add this script tag to any third-party site:
     baseUrl: "https://retail.klynxai.com",
     label: "Rufus",
     title: "Klynx Retail Assistant",
+    brandName: "Retailer Name",
+    brandLogo: "https://example.com/logo.png",
     accent: "#2563eb",
-    position: "right"
+    position: "right",
+    launcher: "floating"
   };
 </script>
 <script src="https://retail.klynxai.com/embed/widget.js"></script>
 ```
 
 This opens a right-side drawer using the embedded UI (`/?embed=1`).
+
+### Header button mode (Rufus-tab look)
+
+Attach the drawer to an existing header button:
+
+```
+<button id="rufusButton">Rufus</button>
+<script>
+  window.KlynxRetailWidget = {
+    baseUrl: "https://retail.klynxai.com",
+    launcher: "header",
+    targetSelector: "#rufusButton",
+    brandName: "Retailer Name",
+    brandLogo: "https://example.com/logo.png"
+  };
+</script>
+<script src="https://retail.klynxai.com/embed/widget.js"></script>
+```
