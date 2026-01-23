@@ -89,3 +89,8 @@ Open `https://retail.klynxai.com/dashboard.html` to view summary metrics.
 Optional protection:
 - Set `KLYNX_RETAIL_DASHBOARD_TOKEN=yourtoken`
 - Access with `https://retail.klynxai.com/dashboard.html?token=yourtoken`
+
+Dashboard features:
+- Date filters (start/end)
+- Retailer funnel
+- CSV export: `https://retail.klynxai.com/api/analytics/export?token=yourtoken`

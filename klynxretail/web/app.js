@@ -136,7 +136,8 @@ async function send() {
 async function exportCart() {
   if (!lastItems || !lastItems.length) return;
   exportCartBtn.disabled = true;
-  track("cart.export", { items: lastItems.length });
+  const retailers = Array.from(new Set(lastItems.map((i) => i.retailer).filter(Boolean)));
+  track("cart.export", { items: lastItems.length, retailers });
   const res = await fetch("/api/cart", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

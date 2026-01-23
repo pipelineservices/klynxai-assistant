@@ -1,7 +1,7 @@
 from __future__ import annotations
 import uuid
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest, CartRequest, CartResponse
@@ -28,7 +28,7 @@ def _dashboard_allowed(request: Request) -> bool:
 
 @app.middleware("http")
 async def dashboard_auth(request: Request, call_next):
-    if request.url.path in ("/dashboard.html", "/api/analytics/summary"):
+    if request.url.path in ("/dashboard.html", "/api/analytics/summary", "/api/analytics/export"):
         if not _dashboard_allowed(request):
             return JSONResponse({"detail": "unauthorized"}, status_code=401)
     return await call_next(request)
@@ -97,8 +97,21 @@ def create_cart(req: CartRequest):
     )
 
 @app.get("/api/analytics/summary")
-def analytics_summary():
-    return analytics.summary_last_24h()
+def analytics_summary(request: Request):
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+    return analytics.summary_last_24h(start=start, end=end)
+
+@app.get("/api/analytics/export")
+def analytics_export(request: Request):
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+    csv_data = analytics.export_csv(start=start, end=end)
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=analytics.csv"},
+    )
 
 # Serve embed widget assets
 app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")

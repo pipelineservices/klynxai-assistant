@@ -1,10 +1,10 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
 import sqlite3
 import threading
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 from core import settings
 
@@ -33,6 +33,16 @@ def init_db() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id)")
 
 
+def _time_clause(start: Optional[str], end: Optional[str]) -> Tuple[str, Tuple[Any, ...]]:
+    if start and end:
+        return "ts BETWEEN ? AND ?", (start, end)
+    if start:
+        return "ts >= ?", (start,)
+    if end:
+        return "ts <= ?", (end,)
+    return "ts >= datetime('now','-1 day')", ()
+
+
 def write_event(event: str, session_id: str, metadata: Dict[str, Any]) -> None:
     init_db()
     with _lock, _connect() as conn:
@@ -42,53 +52,38 @@ def write_event(event: str, session_id: str, metadata: Dict[str, Any]) -> None:
         )
 
 
-def summary_last_24h() -> Dict[str, Any]:
+def summary_last_24h(start: Optional[str] = None, end: Optional[str] = None) -> Dict[str, Any]:
     init_db()
+    where, params = _time_clause(start, end)
     with _lock, _connect() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT COUNT(*) FROM events WHERE ts >= datetime('now','-1 day')"
+            f"SELECT COUNT(*) FROM events WHERE {where}",
+            params,
         )
         total = cur.fetchone()[0]
         cur.execute(
-            "SELECT COUNT(*) FROM events WHERE event='page.view' AND ts >= datetime('now','-1 day')"
+            f"SELECT COUNT(*) FROM events WHERE event='page.view' AND {where}",
+            params,
         )
         views = cur.fetchone()[0]
         cur.execute(
-            "SELECT COUNT(*) FROM events WHERE event='chat.submit' AND ts >= datetime('now','-1 day')"
+            f"SELECT COUNT(*) FROM events WHERE event='chat.submit' AND {where}",
+            params,
         )
         chats = cur.fetchone()[0]
         cur.execute(
-            "SELECT COUNT(*) FROM events WHERE event='cart.export' AND ts >= datetime('now','-1 day')"
+            f"SELECT COUNT(*) FROM events WHERE event='cart.export' AND {where}",
+            params,
         )
         exports = cur.fetchone()[0]
         conversion = f"{(exports / chats * 100):.1f}%" if chats else "0%"
 
         cur.execute(
-            """SELECT metadata FROM events
-               WHERE event='chat.response' AND ts >= datetime('now','-1 day')
-               ORDER BY ts DESC LIMIT 200"""
-        )
-        raw_resp = [r[0] for r in cur.fetchall()]
-        retailer_counts: Dict[str, int] = {}
-        for m in raw_resp:
-            if isinstance(m, str):
-                try:
-                    obj = json.loads(m)
-                    retailers = obj.get("retailers", [])
-                    for r in retailers:
-                        retailer_counts[r] = retailer_counts.get(r, 0) + 1
-                except json.JSONDecodeError:
-                    pass
-        top_retailers = [
-            {"retailer": r, "count": c}
-            for r, c in sorted(retailer_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        ]
-
-        cur.execute(
-            """SELECT metadata FROM events
-               WHERE event='chat.submit' AND ts >= datetime('now','-1 day')
-               ORDER BY ts DESC LIMIT 200"""
+            f"""SELECT metadata FROM events
+               WHERE event='chat.submit' AND {where}
+               ORDER BY ts DESC LIMIT 200""",
+            params,
         )
         raw = [r[0] for r in cur.fetchall()]
         counts: Dict[str, int] = {}
@@ -108,12 +103,62 @@ def summary_last_24h() -> Dict[str, Any]:
         ]
 
         cur.execute(
-            """SELECT ts, event, session_id
-               FROM events ORDER BY ts DESC LIMIT 50"""
+            f"""SELECT ts, event, session_id
+               FROM events WHERE {where}
+               ORDER BY ts DESC LIMIT 50""",
+            params,
         )
         events = [
             {"ts": r[0], "event": r[1], "session_id": r[2]} for r in cur.fetchall()
         ]
+
+        cur.execute(
+            f"""SELECT metadata FROM events
+               WHERE event='chat.response' AND {where}
+               ORDER BY ts DESC LIMIT 500""",
+            params,
+        )
+        raw_resp = [r[0] for r in cur.fetchall()]
+        retailer_counts: Dict[str, int] = {}
+        for m in raw_resp:
+            if isinstance(m, str):
+                try:
+                    obj = json.loads(m)
+                    retailers = obj.get("retailers", [])
+                    for r in retailers:
+                        retailer_counts[r] = retailer_counts.get(r, 0) + 1
+                except json.JSONDecodeError:
+                    pass
+        top_retailers = [
+            {"retailer": r, "count": c}
+            for r, c in sorted(retailer_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
+
+        cur.execute(
+            f"""SELECT metadata FROM events
+               WHERE event='cart.export' AND {where}
+               ORDER BY ts DESC LIMIT 500""",
+            params,
+        )
+        raw_exports = [r[0] for r in cur.fetchall()]
+        export_counts: Dict[str, int] = {}
+        for m in raw_exports:
+            if isinstance(m, str):
+                try:
+                    obj = json.loads(m)
+                    retailers = obj.get("retailers", [])
+                    for r in retailers:
+                        export_counts[r] = export_counts.get(r, 0) + 1
+                except json.JSONDecodeError:
+                    pass
+
+        retailer_funnel = []
+        for r, c in sorted(retailer_counts.items(), key=lambda x: x[1], reverse=True):
+            exp = export_counts.get(r, 0)
+            conv = f"{(exp / c * 100):.1f}%" if c else "0%"
+            retailer_funnel.append(
+                {"retailer": r, "responses": c, "exports": exp, "conversion": conv}
+            )
 
     return {
         "total": total,
@@ -123,5 +168,23 @@ def summary_last_24h() -> Dict[str, Any]:
         "conversion": conversion,
         "top_queries": top_queries,
         "top_retailers": top_retailers,
+        "retailer_funnel": retailer_funnel,
         "events": events,
     }
+
+
+def export_csv(start: Optional[str] = None, end: Optional[str] = None) -> str:
+    init_db()
+    where, params = _time_clause(start, end)
+    with _lock, _connect() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT ts, event, session_id, metadata FROM events WHERE {where} ORDER BY ts DESC",
+            params,
+        )
+        rows = cur.fetchall()
+    lines = ["ts,event,session_id,metadata"]
+    for ts, event, session_id, metadata in rows:
+        meta = metadata.replace('"', '""') if isinstance(metadata, str) else ""
+        lines.append(f"\"{ts}\",\"{event}\",\"{session_id}\",\"{meta}\"")
+    return "\n".join(lines)
