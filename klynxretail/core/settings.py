@@ -13,3 +13,4 @@ MCP_TOOL_CATALOG_SEARCH = os.getenv("KLYNX_MCP_TOOL_CATALOG_SEARCH", "catalog.se
 MCP_TIMEOUT_S = int(os.getenv("KLYNX_MCP_TIMEOUT_S", "10"))
 
 CHECKOUT_BASE_URL = os.getenv("KLYNX_RETAIL_CHECKOUT_URL", "https://retail.klynxai.com/checkout")
+ANALYTICS_DB_PATH = os.getenv("KLYNX_RETAIL_ANALYTICS_DB", os.path.join("run", "analytics.db"))

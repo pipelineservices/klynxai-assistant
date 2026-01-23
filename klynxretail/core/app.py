@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest, CartRequest, CartResponse
 from core.services.orchestrator import Orchestrator
 from core import settings
+from core import analytics
 
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
@@ -66,7 +67,7 @@ def chat(req: ChatRequest):
 
 @app.post("/api/events")
 def events(req: EventRequest):
-    # Basic sink for usage analytics; extend to store or forward later.
+    analytics.write_event(req.event, req.session_id, req.metadata)
     return {"ok": True, "event": req.event}
 
 @app.post("/api/cart", response_model=CartResponse)
