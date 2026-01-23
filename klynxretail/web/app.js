@@ -129,7 +129,8 @@ async function send() {
   addMessage("assistant", data.reply || "Here are results.");
   renderCards(data.items || []);
   addComparison(data.items || []);
-  track("chat.response", { items: (data.items || []).length });
+  const retailers = Array.from(new Set((data.items || []).map((i) => i.retailer).filter(Boolean)));
+  track("chat.response", { items: (data.items || []).length, retailers });
 }
 
 async function exportCart() {

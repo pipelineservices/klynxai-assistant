@@ -66,6 +66,27 @@ def summary_last_24h() -> Dict[str, Any]:
 
         cur.execute(
             """SELECT metadata FROM events
+               WHERE event='chat.response' AND ts >= datetime('now','-1 day')
+               ORDER BY ts DESC LIMIT 200"""
+        )
+        raw_resp = [r[0] for r in cur.fetchall()]
+        retailer_counts: Dict[str, int] = {}
+        for m in raw_resp:
+            if isinstance(m, str):
+                try:
+                    obj = json.loads(m)
+                    retailers = obj.get("retailers", [])
+                    for r in retailers:
+                        retailer_counts[r] = retailer_counts.get(r, 0) + 1
+                except json.JSONDecodeError:
+                    pass
+        top_retailers = [
+            {"retailer": r, "count": c}
+            for r, c in sorted(retailer_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        ]
+
+        cur.execute(
+            """SELECT metadata FROM events
                WHERE event='chat.submit' AND ts >= datetime('now','-1 day')
                ORDER BY ts DESC LIMIT 200"""
         )
@@ -101,5 +122,6 @@ def summary_last_24h() -> Dict[str, Any]:
         "exports": exports,
         "conversion": conversion,
         "top_queries": top_queries,
+        "top_retailers": top_retailers,
         "events": events,
     }

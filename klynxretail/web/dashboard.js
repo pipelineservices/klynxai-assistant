@@ -15,6 +15,14 @@ async function loadDashboard() {
     list.appendChild(li);
   });
 
+  const retailers = document.getElementById("topRetailers");
+  retailers.innerHTML = "";
+  (data.top_retailers || []).forEach((r) => {
+    const li = document.createElement("li");
+    li.textContent = `${r.retailer} (${r.count})`;
+    retailers.appendChild(li);
+  });
+
   const events = document.getElementById("events");
   events.innerHTML = "";
   (data.events || []).forEach((e) => {
