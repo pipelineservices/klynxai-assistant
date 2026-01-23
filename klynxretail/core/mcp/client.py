@@ -35,7 +35,7 @@ class MCPClient:
         if self._initialized:
             headers["MCP-Protocol-Version"] = self.protocol_version
         if self._session_id:
-            headers["Mcp-Session-Id"] = self._session_id
+            headers["MCP-Session-Id"] = self._session_id
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
         return headers
@@ -52,7 +52,7 @@ class MCPClient:
             self._initialized = False
             return None
         resp.raise_for_status()
-        session_id = resp.headers.get("Mcp-Session-Id")
+        session_id = resp.headers.get("MCP-Session-Id") or resp.headers.get("Mcp-Session-Id")
         if session_id:
             self._session_id = session_id
         if not resp.content:
@@ -106,6 +106,9 @@ class MCPClient:
         if params is not None:
             payload["params"] = params
         resp = self._post(payload)
+        if resp is None and self._session_id is None:
+            self.initialize()
+            resp = self._post(payload)
         if not resp:
             return {"jsonrpc": "2.0", "id": req_id, "result": {}}
         return resp
