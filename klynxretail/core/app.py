@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from core.models import SearchRequest, SearchResponse, ChatRequest, ChatResponse, EventRequest, CartRequest, CartResponse
 from core.services.orchestrator import Orchestrator
+from core import governance
 from core import settings
 from core import analytics
 
@@ -75,8 +76,18 @@ def chat(req: ChatRequest):
     lines.append("- Add filters like brand, price range, size")
     lines.append("- Ask for availability in your city")
 
-    reply = "\n".join(lines)
-    return ChatResponse(request_id=str(uuid.uuid4()), reply=reply, items=items)
+    decisions = governance.build_recommendations(items)
+    banner = governance.governance_banner(decisions)
+    reply = "Pending Approval: recommendations sent to governance queue."
+    return ChatResponse(
+        request_id=str(uuid.uuid4()),
+        reply=reply,
+        items=items,
+        governance={
+            "decisions": [d.__dict__ for d in decisions],
+            "banner": banner,
+        },
+    )
 
 @app.post("/api/events")
 def events(req: EventRequest):
@@ -118,3 +129,20 @@ app.mount("/embed", StaticFiles(directory="embed", html=True), name="embed")
 
 # Serve web demo
 app.mount("/", StaticFiles(directory="web", html=True), name="web")
+
+
+@app.get("/api/governance/decisions")
+def governance_decisions():
+    return {"decisions": [d.__dict__ for d in governance.list_decisions()]}
+
+
+@app.get("/api/governance/audit")
+def governance_audit():
+    return {"audit": governance.list_audit()}
+
+
+@app.post("/api/governance/send")
+def governance_send(payload: dict):
+    ids = payload.get("decision_ids") or []
+    decisions = governance.mark_submitted(ids)
+    return {"status": "ok", "submitted": [d.__dict__ for d in decisions]}

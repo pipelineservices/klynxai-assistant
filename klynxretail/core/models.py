@@ -35,6 +35,7 @@ class ChatResponse(BaseModel):
     request_id: str
     reply: str
     items: List[Product] = []
+    governance: Optional[dict] = None
 
 class EventRequest(BaseModel):
     event: str

@@ -19,18 +19,26 @@
           <img id="embedLogo" class="embed-logo" alt="" />
           <div class="embed-title" id="embedTitle">Klynx Retail Assistant</div>
         </div>
+        <div id="governanceBanner" class="gov-banner hidden">
+          <div class="gov-title">Governed Retail Decisions</div>
+          <div id="policyRisk" class="gov-risk"></div>
+          <div id="policyDetails" class="gov-details"></div>
+        </div>
         <div id="messages" class="messages"></div>
         <div class="composer">
           <textarea id="input" placeholder="Ask for a product, e.g., 'best robot vacuum'" rows="2"></textarea>
           <button id="send">Send</button>
         </div>
         <div class="actions">
+          <button id="sendToGov" class="secondary" disabled>Send to Governance</button>
           <button id="exportCart" class="secondary" disabled>Export cart</button>
           <span id="checkoutLink" class="checkout-link hidden"></span>
         </div>
       </div>
       <aside class="panel">
         <div class="panel-title">Results</div>
+        <div class="panel-sub">Decision Queue</div>
+        <div id="decisionQueue" class="queue"></div>
         <div id="cards" class="cards"></div>
       </aside>
     </main>
