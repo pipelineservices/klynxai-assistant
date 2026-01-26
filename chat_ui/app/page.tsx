@@ -2077,9 +2077,7 @@ export default function Page() {
                 } else if (item.action === "open-attachments") {
                   openFilePicker();
                 } else if (item.action === "governance-hook") {
-                  showNotice(`${item.label} integration requires governance review. Logged as draft.`, "warn");
-                  setInput(`${item.label} integration request`);
-                  setTimeout(() => composerRef.current?.focus(), 0);
+                  showNotice(`${item.label} integration is not wired. Draft only — route through governance.`, "warn");
                 } else {
                   setInput(item.label);
                   setTimeout(() => composerRef.current?.focus(), 0);
