@@ -664,11 +664,11 @@ export default function Page() {
 
   const moreMenuItems = [
     { id: "images", label: "Images", emoji: "🖼", action: "open-attachments" },
-    { id: "social", label: "Social", emoji: "🌐", action: "placeholder" },
-    { id: "apps", label: "Apps", emoji: "🧩", action: "placeholder" },
-    { id: "codex", label: "Codex", emoji: "💻", action: "placeholder" },
-    { id: "gpts", label: "GPTs", emoji: "🤖", action: "placeholder" },
-    { id: "projects", label: "Projects", emoji: "📁", action: "placeholder" },
+    { id: "social", label: "Social", emoji: "🌐", action: "governance-hook" },
+    { id: "apps", label: "Apps", emoji: "🧩", action: "governance-hook" },
+    { id: "codex", label: "Codex", emoji: "💻", action: "governance-hook" },
+    { id: "gpts", label: "GPTs", emoji: "🤖", action: "governance-hook" },
+    { id: "projects", label: "Projects", emoji: "📁", action: "governance-hook" },
   ];
 
   const sidebarFooterItems = [
@@ -712,9 +712,49 @@ export default function Page() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [openChatMenuId, setOpenChatMenuId] = useState<string>("");
+  const [notice, setNotice] = useState<{ kind: "info" | "warn"; text: string } | null>(null);
 
   function openFilePicker() {
     fileInputRef.current?.click();
+  }
+
+  function showNotice(text: string, kind: "info" | "warn" = "info") {
+    setNotice({ text, kind });
+    setTimeout(() => setNotice(null), 4000);
+  }
+
+  function isRiskyOutput(text: string) {
+    const riskyTokens = [
+      "deploy",
+      "production",
+      "infra",
+      "infrastructure",
+      "price",
+      "pricing",
+      "discount",
+      "promotion",
+      "customer",
+      "user",
+      "delete",
+      "terminate",
+      "rollback",
+      "security",
+      "outage",
+      "payment",
+      "invoice",
+      "account",
+      "access",
+      "policy",
+      "override",
+    ];
+    const lowered = (text || "").toLowerCase();
+    return riskyTokens.some((t) => lowered.includes(t));
+  }
+
+  function handleGovernanceAction(action: "convert" | "approve", content: string) {
+    if (!content) return;
+    const verb = action === "convert" ? "Converted to decision draft" : "Routed for approval";
+    showNotice(`${verb}. Governance required before execution.`, "info");
   }
 
   function removeAttachment(id: string) {
@@ -1588,6 +1628,24 @@ export default function Page() {
           </div>
         ) : (
           <>
+            {notice ? (
+              <div
+                style={{
+                  maxWidth: 900,
+                  margin: "16px auto 0",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: `1px solid ${notice.kind === "warn" ? "#f59e0b" : colors.panelBorder}`,
+                  background: notice.kind === "warn" ? "rgba(251,191,36,0.12)" : colors.cardAssistant,
+                  color: colors.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {notice.text}
+              </div>
+            ) : null}
+
             {/* Messages */}
             <div
               ref={scrollRef}
@@ -1600,12 +1658,27 @@ export default function Page() {
               }}
             >
               <div style={{ maxWidth: 900, margin: "0 auto" }}>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: `1px solid ${colors.panelBorder}`,
+                    background: colors.cardAssistant,
+                    color: colors.text,
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Drafting workspace: outputs are drafts only. All actions must route through governance.
+                </div>
                 {activeMessages.map((m, i) => {
                   const isLast = i === activeMessages.length - 1;
                   const showStop = isLast && m.role === "assistant" && (isStreaming || isTyping);
                   const rx = m.reactions || {};
 
                   const sources = m.role === "assistant" ? extractSourcesFromText(m.content, 4) : [];
+                  const risky = m.role === "assistant" ? isRiskyOutput(m.content) : false;
 
                   return (
                     <div
@@ -1627,6 +1700,22 @@ export default function Page() {
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>
                             {normalizeAssistantText(m.content)}
                           </ReactMarkdown>
+                          {risky ? (
+                            <div
+                              style={{
+                                marginTop: 12,
+                                padding: "10px 12px",
+                                borderRadius: 12,
+                                border: "1px solid #f59e0b",
+                                background: "rgba(251,191,36,0.12)",
+                                color: colors.text,
+                                fontSize: 13,
+                                fontWeight: 600,
+                              }}
+                            >
+                              Risky output detected. Actions affecting infra, code, pricing, or users must be routed through KLYNX Dragon.
+                            </div>
+                          ) : null}
                           {showStop ? (
                             <span
                               style={{
@@ -1871,6 +1960,55 @@ export default function Page() {
                                 </div>
                               ) : null}
                             </div>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                onClick={() => handleGovernanceAction("convert", m.content)}
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                }}
+                              >
+                                Convert to Decision
+                              </button>
+                              <button
+                                onClick={() => handleGovernanceAction("approve", m.content)}
+                                style={{
+                                  border: `1px solid ${colors.btnBorder}`,
+                                  background: colors.btnBg,
+                                  color: colors.text,
+                                  borderRadius: 10,
+                                  padding: "6px 10px",
+                                  cursor: "pointer",
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                }}
+                              >
+                                Send for Approval
+                              </button>
+                              {risky ? (
+                                <button
+                                  onClick={() => window.open("https://dragon.klynxai.com", "_blank")}
+                                  style={{
+                                    border: "1px solid #f59e0b",
+                                    background: "rgba(251,191,36,0.12)",
+                                    color: colors.text,
+                                    borderRadius: 10,
+                                    padding: "6px 10px",
+                                    cursor: "pointer",
+                                    fontWeight: 700,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  Route through KLYNX Dragon
+                                </button>
+                              ) : null}
+                            </div>
                           </div>
                         </>
                       ) : (
@@ -1938,6 +2076,10 @@ export default function Page() {
                   searchInputRef.current?.focus();
                 } else if (item.action === "open-attachments") {
                   openFilePicker();
+                } else if (item.action === "governance-hook") {
+                  showNotice(`${item.label} integration requires governance review. Logged as draft.`, "warn");
+                  setInput(`${item.label} integration request`);
+                  setTimeout(() => composerRef.current?.focus(), 0);
                 } else {
                   setInput(item.label);
                   setTimeout(() => composerRef.current?.focus(), 0);
