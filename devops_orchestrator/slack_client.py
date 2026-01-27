@@ -15,3 +15,40 @@ def post_message(text: str, blocks: list | None = None) -> dict:
     except Exception:
         data = {"text": resp.text}
     return {"ok": resp.ok, "status": resp.status_code, "data": data}
+
+
+def post_approval_request(incident_id: str, decision_id: str, summary: str, run_url: str) -> dict:
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"*CI/CD Failure*\n{summary}"}},
+        {
+            "type": "section",
+            "fields": [
+                {"type": "mrkdwn", "text": f"*Incident ID:*\n{incident_id}"},
+                {"type": "mrkdwn", "text": f"*Decision ID:*\n{decision_id}"},
+            ],
+        },
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"*Run URL:* {run_url or 'n/a'}"}},
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Approve"},
+                    "style": "primary",
+                    "action_id": "devops_approve",
+                    "value": f"{incident_id}|{decision_id}|approve",
+                },
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Deny"},
+                    "style": "danger",
+                    "action_id": "devops_deny",
+                    "value": f"{incident_id}|{decision_id}|deny",
+                },
+            ],
+        },
+    ]
+    return post_message(
+        text=f"Approval required for incident {incident_id} (decision {decision_id}).",
+        blocks=blocks,
+    )

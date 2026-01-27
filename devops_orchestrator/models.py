@@ -64,3 +64,11 @@ class ObservabilityEvent(BaseModel):
 class IncidentResponse(BaseModel):
     incident_id: str
     status: str
+
+
+class ApprovalPayload(BaseModel):
+    incident_id: str
+    decision_id: str
+    approved: bool
+    approver: str
+    justification: Optional[str] = None
