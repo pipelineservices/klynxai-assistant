@@ -328,6 +328,17 @@ async def github_webhook(request: Request):
         return JSONResponse({"detail": "invalid_signature"}, status_code=401)
 
     payload = json.loads(body.decode("utf-8") or "{}")
+    audit.write_event(
+        "github.webhook.received",
+        payload.get("repository", {}).get("full_name", "unknown"),
+        {
+            "event": event,
+            "delivery_id": request.headers.get("X-GitHub-Delivery"),
+            "action": payload.get("action"),
+            "conclusion": payload.get("workflow_run", {}).get("conclusion")
+            or payload.get("check_suite", {}).get("conclusion"),
+        },
+    )
     if event == "workflow_run":
         run = payload.get("workflow_run", {})
         if run.get("conclusion") != "failure":
