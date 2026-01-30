@@ -4,23 +4,22 @@
 
 :root {
   color-scheme: light dark;
-  --klynx-bg: #f4f8ff;
+  --klynx-bg: #f3fbfb;
   --klynx-surface: #ffffff;
   --klynx-card: #ffffff;
-  --klynx-text: #0b1b2f;
-  --klynx-muted: #4a5f78;
-  --klynx-border: #d7e4f2;
-  --klynx-accent: #0ea5e9;
-  --klynx-accent-strong: #1d4ed8;
-  --klynx-accent-warm: #f59e0b;
-  --klynx-accent-coral: #f97316;
-  --klynx-accent-soft: rgba(14, 165, 233, 0.12);
-  --klynx-shadow: 0 22px 70px rgba(12, 22, 50, 0.14);
-  --klynx-soft-shadow: 0 18px 40px rgba(9, 32, 66, 0.08);
-  --klynx-grad: radial-gradient(circle at 12% 12%, rgba(14, 165, 233, 0.25), transparent 55%),
-    radial-gradient(circle at 85% 6%, rgba(29, 78, 216, 0.22), transparent 45%),
-    radial-gradient(circle at 70% 70%, rgba(245, 158, 11, 0.2), transparent 50%),
-    radial-gradient(circle at 20% 80%, rgba(249, 115, 22, 0.16), transparent 45%);
+  --klynx-text: #05364b;
+  --klynx-muted: #56758b;
+  --klynx-border: #dbe9f2;
+  --klynx-accent: #16a3c6;
+  --klynx-accent-strong: #0b5dbb;
+  --klynx-accent-warm: #1bb3cf;
+  --klynx-accent-soft: rgba(22, 163, 198, 0.12);
+  --klynx-shadow: 0 18px 50px rgba(4, 47, 75, 0.14);
+  --klynx-soft-shadow: 0 14px 32px rgba(9, 32, 66, 0.08);
+  --klynx-grad: radial-gradient(circle at 10% 12%, rgba(22, 163, 198, 0.22), transparent 55%),
+    radial-gradient(circle at 90% 10%, rgba(11, 93, 187, 0.2), transparent 55%),
+    radial-gradient(circle at 70% 70%, rgba(27, 179, 207, 0.14), transparent 50%);
+  --klynx-dots: radial-gradient(circle, rgba(22, 163, 198, 0.22) 1px, transparent 1.5px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,15 +32,14 @@
     --klynx-border: rgba(148, 163, 184, 0.2);
     --klynx-accent: #38bdf8;
     --klynx-accent-strong: #60a5fa;
-    --klynx-accent-warm: #fbbf24;
-    --klynx-accent-coral: #fb923c;
+    --klynx-accent-warm: #22d3ee;
     --klynx-accent-soft: rgba(56, 189, 248, 0.12);
     --klynx-shadow: 0 30px 80px rgba(2, 6, 23, 0.6);
     --klynx-soft-shadow: 0 18px 50px rgba(2, 6, 23, 0.45);
     --klynx-grad: radial-gradient(circle at 15% 10%, rgba(56, 189, 248, 0.24), transparent 55%),
       radial-gradient(circle at 90% 0%, rgba(96, 165, 250, 0.2), transparent 45%),
-      radial-gradient(circle at 70% 60%, rgba(251, 191, 36, 0.14), transparent 50%),
-      radial-gradient(circle at 20% 80%, rgba(251, 146, 60, 0.12), transparent 45%);
+      radial-gradient(circle at 70% 60%, rgba(34, 211, 238, 0.14), transparent 50%);
+    --klynx-dots: radial-gradient(circle, rgba(56, 189, 248, 0.2) 1px, transparent 1.5px);
   }
   .site-header {
     background: rgba(11, 18, 32, 0.88);
@@ -51,6 +49,17 @@
   }
   .glass-card {
     background: rgba(19, 34, 58, 0.8);
+  }
+  .hero-panel {
+    background: rgba(16, 27, 45, 0.95);
+  }
+  .hero-panel-card {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(148, 163, 184, 0.25);
+  }
+  .hero-panel-summary {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(96, 165, 250, 0.18));
+    border-color: rgba(56, 189, 248, 0.2);
   }
 }
 
@@ -77,8 +86,18 @@ body {
     position: absolute;
     inset: 0;
     background: var(--klynx-grad);
+    opacity: 0.8;
     pointer-events: none;
     z-index: 0;
+  }
+
+  .hero-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--klynx-dots);
+    background-size: 48px 48px;
+    opacity: 0.35;
   }
 
   .container {
@@ -93,7 +112,7 @@ body {
     top: 0;
     z-index: 50;
     backdrop-filter: blur(18px);
-    background: rgba(246, 251, 255, 0.9);
+    background: rgba(244, 251, 251, 0.92);
     border-bottom: 1px solid var(--klynx-border);
   }
 
@@ -245,36 +264,55 @@ body {
     align-items: center;
   }
 
-  .hero-card {
-    background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.9));
-    color: #e2e8f0;
+  .hero-panel {
+    background: var(--klynx-card);
     border-radius: 28px;
     padding: 28px;
     box-shadow: var(--klynx-shadow);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    position: relative;
-    overflow: hidden;
-    animation: float 10s ease-in-out infinite;
+    border: 1px solid var(--klynx-border);
+    display: grid;
+    gap: 20px;
   }
 
-  .hero-card::before {
-    content: "";
-    position: absolute;
-    inset: -40% 10% auto auto;
-    width: 220px;
-    height: 220px;
-    background: radial-gradient(circle, rgba(56, 189, 248, 0.35), transparent 65%);
-    opacity: 0.8;
-  }
-
-  .hero-card-header {
-    margin-bottom: 20px;
-  }
-
-  .hero-card-grid {
+  .hero-panel-grid {
     display: grid;
     gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .hero-panel-card {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 44px 1fr;
+    align-items: start;
+    background: #f7fbff;
+    border: 1px solid var(--klynx-border);
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .hero-panel-card h3 {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .hero-panel-card p {
+    color: var(--klynx-muted);
+    font-size: 0.95rem;
+  }
+
+  .hero-panel-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgba(22, 163, 198, 0.12);
+    border: 1px solid rgba(22, 163, 198, 0.3);
+  }
+
+  .hero-panel-summary {
+    padding: 18px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(22, 163, 198, 0.12), rgba(11, 93, 187, 0.12));
+    border: 1px solid rgba(22, 163, 198, 0.18);
   }
 
   .info-card {
@@ -340,7 +378,7 @@ body {
   }
 
   .section-contrast {
-    background: linear-gradient(120deg, rgba(14, 165, 233, 0.08), rgba(29, 78, 216, 0.08));
+    background: linear-gradient(120deg, rgba(22, 163, 198, 0.08), rgba(11, 93, 187, 0.08));
     border-top: 1px solid var(--klynx-border);
     border-bottom: 1px solid var(--klynx-border);
   }
@@ -432,16 +470,6 @@ body {
     border-radius: 20px;
     padding: 18px 22px;
     box-shadow: var(--klynx-soft-shadow);
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-6px);
-    }
   }
 
   @keyframes fade-up {

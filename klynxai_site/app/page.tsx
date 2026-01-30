@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 const navItems = [
+  { label: "Home", href: "#home" },
   { label: "Platform", href: "#platform" },
   { label: "Governance", href: "#governance" },
   { label: "DevSecOps", href: "#devsecops" },
@@ -9,85 +10,85 @@ const navItems = [
   { label: "Contact", href: "#contact" },
 ];
 
-const platformHighlights = [
+const platformItems = [
   {
-    title: "Decision Control Plane",
+    title: "Unified Control Plane",
     description:
-      "A unified authority layer that brokers every AI action across infrastructure, apps, and operations.",
+      "Centralize AI decisioning, approvals, and execution under one governed authority layer.",
   },
   {
     title: "Policy Studio",
     description:
-      "Design and enforce governance rules with approval thresholds, escalation logic, and evidence capture.",
+      "Design guardrails, escalation paths, and approval thresholds mapped to enterprise policy.",
   },
   {
     title: "Operational Intelligence",
     description:
-      "Live telemetry fused into decision context for risk-scored, high-confidence approvals.",
+      "Fuse telemetry, events, and context to guide risk-scored recommendations.",
   },
   {
     title: "Execution Orchestration",
     description:
-      "Route vetted actions to cloud, security, and ops tools with full traceability.",
+      "Route approved actions to cloud, security, and operations tools with full traceability.",
   },
 ];
 
-const governancePillars = [
+const governanceItems = [
   {
     title: "Human-in-Command Approval",
     description:
-      "Every critical action is reviewed by accountable owners before execution.",
+      "Critical decisions stay accountable with named approvers and enforced sign-off.",
   },
   {
-    title: "Evidence & Audit Trail",
+    title: "Audit Evidence Bundles",
     description:
-      "Immutable decision records with context, rationale, and artifacts attached.",
+      "Every recommendation and action is packaged with rationale, data, and approvals.",
   },
   {
     title: "Policy Enforcement",
     description:
-      "Rules-based gating ensures every decision aligns with enterprise guardrails.",
+      "Governed actions stay aligned to enterprise and regulatory requirements.",
   },
   {
     title: "Regulatory Readiness",
     description:
-      "Decision logging and controls mapped to regulated operating standards.",
+      "Compliance artifacts generated automatically for internal and external review.",
   },
 ];
 
 const devsecopsItems = [
   {
-    title: "Secure Change Management",
+    title: "Governed Change Control",
     description:
-      "Pipeline changes and releases flow through policy checks and governed approvals.",
+      "Infrastructure and release changes flow through policy gating and approval sequencing.",
   },
   {
-    title: "Incident Command Automation",
+    title: "Incident Command",
     description:
-      "Coordinate response playbooks with risk gating and live evidence capture.",
+      "Coordinate response playbooks with evidence capture and risk-aware routing.",
   },
   {
-    title: "Access & Secrets Governance",
+    title: "Secure Access Operations",
     description:
-      "Protect credentials, privilege boundaries, and policy inheritance across toolchains.",
+      "Protect credentials, privileges, and tool access with policy-driven boundaries.",
   },
 ];
 
 const agenticItems = [
   {
-    title: "Role-Bound Agents",
+    title: "Bounded Agent Roles",
     description:
-      "Agents are scoped to approved tools, data, and operating boundaries.",
+      "Agents operate only within approved tools, data, and authority scopes.",
   },
   {
-    title: "Runbook Enforcement",
+    title: "Runbook Execution",
     description:
-      "Agent workflows execute against approved procedures and escalation rules.",
+      "Agent workflows execute against approved procedures and escalation policies.",
   },
   {
-    title: "Continuous Evaluation",
+    title: "Continuous Oversight",
     description:
-      "Monitor agent decisions, drift, and risk posture in real time.",
+      "Monitor agent decisions and risk posture with real-time governance telemetry.",
   },
 ];
 
@@ -95,12 +96,12 @@ const useCases = [
   {
     title: "Critical Infrastructure",
     description:
-      "Govern restoration actions, dispatch priorities, and safety protocols for grid and utility teams.",
+      "Govern restoration actions, dispatch priorities, and safety protocols for utility teams.",
   },
   {
     title: "Financial Risk Operations",
     description:
-      "Enforce approval gates for trading controls, fraud response, and regulatory reporting.",
+      "Enforce approval gates for fraud response, trading controls, and regulatory reporting.",
   },
   {
     title: "Public Sector Command",
@@ -124,22 +125,28 @@ const useCases = [
   },
 ];
 
-const metrics = [
+const heroCards = [
   {
-    label: "Decision Coverage",
-    value: "Enterprise-wide policy enforcement across AI and automation.",
+    title: "Policy Enforcement",
+    description: "Rules-based gating across every AI decision and automation action.",
   },
   {
-    label: "Audit Integrity",
-    value: "Evidence bundles linked to every approval and execution path.",
+    title: "Command Intelligence",
+    description: "Live operational telemetry for confident, risk-scored approvals.",
   },
   {
-    label: "Operational Control",
-    value: "Real-time guardrails across cloud, security, and infrastructure actions.",
+    title: "Secure Orchestration",
+    description: "Approved execution across cloud, security, and infrastructure tools.",
   },
 ];
 
-const quickLinks = ["Platform", "Governance", "DevSecOps", "Agentic AI", "Use Cases"];
+const quickLinks = [
+  "Platform",
+  "Governance",
+  "DevSecOps",
+  "Agentic AI",
+  "Use Cases",
+];
 
 export default function Home() {
   return (
@@ -178,17 +185,17 @@ export default function Home() {
         <section className="section hero" id="home">
           <div className="container hero-grid">
             <div className="space-y-6">
-              <div className="pill">Enterprise Control Plane</div>
+              <div className="pill">Governed AI for Mission-Critical Operations</div>
               <h1 className="hero-title">
-                The governed AI platform for mission-critical operations
+                Enterprise control for every autonomous decision
               </h1>
               <p className="hero-subtitle">
-                Klynx AI delivers policy-first control for agentic systems. Every decision is
-                accountable, auditable, and aligned to your operating authority.
+                Klynx AI delivers a policy-first platform that governs AI, agentic workflows, and
+                automated execution across critical infrastructure and regulated industries.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a className="btn-primary" href="#contact">Schedule Executive Briefing</a>
-                <a className="btn-outline" href="#use-cases">View Use Cases</a>
+                <a className="btn-primary" href="#platform">Discover the Platform</a>
+                <a className="btn-outline" href="#contact">Book an Executive Briefing</a>
               </div>
               <div className="hero-trust">
                 <span>Policy-First</span>
@@ -196,49 +203,23 @@ export default function Home() {
                 <span>Audit-Ready</span>
               </div>
             </div>
-            <div className="hero-card">
-              <div className="hero-card-header">
-                <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Governance Cockpit</p>
-                <h3>Live Decision Oversight</h3>
+            <div className="hero-panel">
+              <div className="hero-panel-grid">
+                {heroCards.map((card) => (
+                  <div key={card.title} className="hero-panel-card">
+                    <div className="hero-panel-icon" />
+                    <div>
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="hero-card-grid">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Policy</p>
-                  <p className="mt-2 text-sm text-slate-200">
-                    Every action is mapped to approved control policies.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Approvals</p>
-                  <p className="mt-2 text-sm text-slate-200">
-                    Human checkpoints confirm risk before execution.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Evidence</p>
-                  <p className="mt-2 text-sm text-slate-200">
-                    Immutable decision records with telemetry and rationale.
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Execution</p>
-                  <p className="mt-2 text-sm text-slate-200">
-                    Governed orchestration across cloud, security, and ops.
-                  </p>
-                </div>
+              <div className="hero-panel-summary">
+                <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Governance Cockpit</p>
+                <h3>Live decision oversight with full evidence traceability.</h3>
               </div>
             </div>
-          </div>
-        </section>
-
-        <section className="section metrics" id="metrics">
-          <div className="container metric-grid">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="metric-card">
-                <p className="text-sm uppercase tracking-[0.28em] text-slate-500">{metric.label}</p>
-                <p className="mt-3 text-base text-slate-700">{metric.value}</p>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -246,14 +227,13 @@ export default function Home() {
           <div className="container">
             <div className="section-heading">
               <p className="eyebrow">Platform</p>
-              <h2>Unified control across AI, operations, and infrastructure</h2>
+              <h2>One platform. Every decision governed.</h2>
               <p>
-                Build a single authority layer that governs how intelligence moves from insight to
-                approved action.
+                Unify intelligence, policy, and execution to keep autonomous operations accountable.
               </p>
             </div>
             <div className="card-grid">
-              {platformHighlights.map((item) => (
+              {platformItems.map((item) => (
                 <div key={item.title} className="card">
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
@@ -269,16 +249,16 @@ export default function Home() {
               <p className="eyebrow">Governance</p>
               <h2>Governance designed for enterprise authority</h2>
               <p className="hero-subtitle">
-                Klynx connects policies, approvals, and evidence across every autonomous workflow,
-                keeping humans accountable and regulators confident.
+                Klynx aligns AI actions to policy, approval, and evidence so every decision remains
+                accountable to human leaders.
               </p>
-              <a className="btn-primary" href="#contact">See Governance Brief</a>
+              <a className="btn-primary" href="#contact">Request Governance Brief</a>
             </div>
             <div className="stack-cards">
-              {governancePillars.map((pillar) => (
-                <div key={pillar.title} className="glass-card">
-                  <h3>{pillar.title}</h3>
-                  <p>{pillar.description}</p>
+              {governanceItems.map((item) => (
+                <div key={item.title} className="glass-card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
                 </div>
               ))}
             </div>
@@ -291,8 +271,8 @@ export default function Home() {
               <p className="eyebrow">DevSecOps</p>
               <h2>Secure automation for regulated operations</h2>
               <p>
-                Embed governance into pipelines, incident response, and infrastructure changes with
-                enforced policy checkpoints.
+                Embed governance into pipelines, incident response, and infrastructure change
+                management with policy enforcement.
               </p>
             </div>
             <div className="card-grid">
@@ -312,8 +292,8 @@ export default function Home() {
               <p className="eyebrow">Agentic AI</p>
               <h2>Agents that operate under authority, not assumption</h2>
               <p className="hero-subtitle">
-                Klynx turns agents into trusted operators by binding them to policies, approved tools,
-                and continuous oversight.
+                Klynx binds agents to approved roles, runbooks, and oversight to make autonomous
+                execution safe and trusted.
               </p>
             </div>
             <div className="stack-cards">
@@ -333,7 +313,7 @@ export default function Home() {
               <p className="eyebrow">Use Cases</p>
               <h2>Governed AI for the world&apos;s most sensitive missions</h2>
               <p>
-                From utilities to financial services, Klynx ensures automation moves with authority.
+                From utilities to financial services, Klynx keeps autonomous action accountable.
               </p>
             </div>
             <div className="card-grid">
@@ -355,7 +335,7 @@ export default function Home() {
               <p>Share your mission and governance requirements. We will respond within 24 hours.</p>
             </div>
             <div className="contact-card">
-              <form className="contact-form" action="mailto:jkmohancrm@gmail.com" method="post" encType="text/plain">
+              <form className="contact-form" action="mailto:support@klynxai.com" method="post" encType="text/plain">
                 <div className="grid gap-4 md:grid-cols-2">
                   <input name="name" placeholder="Your name" required />
                   <input name="email" type="email" placeholder="Your email" required />
@@ -366,7 +346,7 @@ export default function Home() {
                   <button className="btn-primary" type="submit">Send Message</button>
                   <p className="text-xs text-slate-500">
                     This form opens your email client. You can also email us directly at
-                    <span className="font-semibold"> jkmohancrm@gmail.com</span>.
+                    <span className="font-semibold"> support@klynxai.com</span>.
                   </p>
                 </div>
               </form>
@@ -393,7 +373,7 @@ export default function Home() {
           </div>
           <div>
             <p className="footer-title">Contact</p>
-            <p className="footer-text">jkmohancrm@gmail.com</p>
+            <p className="footer-text">support@klynxai.com</p>
             <p className="footer-text">Book a demo or governance briefing.</p>
           </div>
         </div>
