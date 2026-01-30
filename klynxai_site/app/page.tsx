@@ -270,7 +270,7 @@ const quickLinks = [
 const footerInsights = ["Governed AI in Production", "Operational Risk Intelligence", "Human-in-Command Design"];
 const footerTechnology = ["AI & Machine Learning", "Data Analytics", "IoT + Edge"];
 const footerContact = {
-  phone: "+1 571 560 0820",
+  phone: "+1 252 263 7729",
   email: "support@klynxai.com",
 };
 
