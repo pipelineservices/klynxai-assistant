@@ -20,6 +20,7 @@
     radial-gradient(circle at 90% 10%, rgba(11, 93, 187, 0.2), transparent 55%),
     radial-gradient(circle at 70% 70%, rgba(27, 179, 207, 0.14), transparent 50%);
   --klynx-dots: radial-gradient(circle, rgba(22, 163, 198, 0.22) 1px, transparent 1.5px);
+  --klynx-brand: linear-gradient(90deg, #16a3c6 0%, #22c55e 30%, #f59e0b 65%, #ef4444 100%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -127,6 +128,17 @@ body {
     box-shadow: var(--klynx-soft-shadow);
   }
 
+  .brand-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .brand-gradient {
+    background: var(--klynx-brand);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
   .nav-link {
     color: var(--klynx-muted);
     transition: color 0.2s ease;
@@ -134,6 +146,45 @@ body {
 
   .nav-link:hover {
     color: var(--klynx-accent-strong);
+  }
+
+  .nav-item {
+    position: relative;
+  }
+
+  .nav-item:hover .nav-dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .nav-dropdown {
+    position: absolute;
+    top: 140%;
+    left: 0;
+    min-width: 220px;
+    background: var(--klynx-card);
+    border: 1px solid var(--klynx-border);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: var(--klynx-shadow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .nav-dropdown-link {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: var(--klynx-muted);
+    font-size: 0.85rem;
+  }
+
+  .nav-dropdown-link:hover {
+    background: var(--klynx-accent-soft);
+    color: var(--klynx-text);
   }
 
   .nav-item {
@@ -370,6 +421,33 @@ body {
     padding: 24px;
     box-shadow: var(--klynx-soft-shadow);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .solution-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .solution-card {
+    background: var(--klynx-card);
+    border: 1px solid var(--klynx-border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--klynx-soft-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .solution-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--klynx-shadow);
+  }
+
+  .solution-link {
+    display: inline-flex;
+    margin-top: 10px;
+    font-weight: 600;
+    color: var(--klynx-accent-strong);
   }
 
   .card:hover {

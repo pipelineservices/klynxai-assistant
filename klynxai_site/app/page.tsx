@@ -2,12 +2,61 @@ import Image from "next/image";
 
 const navItems = [
   { label: "Home", href: "#home" },
-  { label: "Platform", href: "#platform" },
-  { label: "Governance", href: "#governance" },
-  { label: "DevSecOps", href: "#devsecops" },
-  { label: "Agentic AI", href: "#agentic" },
-  { label: "Use Cases", href: "#use-cases" },
+  {
+    label: "Solutions",
+    href: "#solutions",
+    children: [
+      { label: "Klynx Dragon", href: "#solution-dragon" },
+      { label: "Smart Outage Restoration", href: "#solution-outage" },
+      { label: "Retail Intelligence", href: "#solution-retail" },
+      { label: "Banking & Risk", href: "#solution-finance" },
+      { label: "Public Safety", href: "#solution-public" },
+    ],
+  },
+  {
+    label: "Platform",
+    href: "#platform",
+    children: [
+      { label: "Governance Core", href: "#governance" },
+      { label: "DevSecOps", href: "#devsecops" },
+      { label: "Agentic AI", href: "#agentic" },
+    ],
+  },
+  {
+    label: "Technology",
+    href: "#technology",
+    children: [
+      { label: "Realtime Fabric", href: "#technology" },
+      { label: "Policy Engine", href: "#technology" },
+      { label: "Audit Evidence", href: "#technology" },
+    ],
+  },
+  {
+    label: "Services",
+    href: "#services",
+    children: [
+      { label: "Advisory", href: "#services" },
+      { label: "Implementation", href: "#services" },
+      { label: "Managed Governance", href: "#services" },
+    ],
+  },
+  { label: "Insights", href: "#insights" },
   { label: "Contact", href: "#contact" },
+];
+
+const heroSignals = [
+  {
+    title: "Policy Enforcement",
+    description: "Rules-based gating for every AI decision and automation action.",
+  },
+  {
+    title: "Command Intelligence",
+    description: "Live operational telemetry that sharpens approvals in real time.",
+  },
+  {
+    title: "Secure Orchestration",
+    description: "Governed execution across cloud, security, and infrastructure tools.",
+  },
 ];
 
 const platformItems = [
@@ -92,6 +141,90 @@ const agenticItems = [
   },
 ];
 
+const solutionCards = [
+  {
+    id: "solution-dragon",
+    title: "Klynx Dragon",
+    description: "Governed command for AI decisions, approvals, and audit trails.",
+  },
+  {
+    id: "solution-outage",
+    title: "Smart Outage Restoration",
+    description: "Policy-driven restoration workflows for critical infrastructure.",
+  },
+  {
+    id: "solution-retail",
+    title: "Retail Intelligence",
+    description: "Governed pricing, inventory, and promotion decisions.",
+  },
+  {
+    id: "solution-finance",
+    title: "Banking & Risk",
+    description: "Regulated decision governance for financial services.",
+  },
+  {
+    id: "solution-public",
+    title: "Public Safety & Government",
+    description: "Mission-ready command for civic and national operations.",
+  },
+  {
+    id: "solution-utilities",
+    title: "Utilities & Energy",
+    description: "Grid intelligence with accountable automation and recovery.",
+  },
+];
+
+const technologyItems = [
+  {
+    title: "Realtime Event Fabric",
+    description:
+      "Streaming telemetry pipeline for logs, metrics, alerts, and compliance signals.",
+  },
+  {
+    title: "Policy Decision Engine",
+    description:
+      "Deterministic policy evaluation layered above AI recommendations.",
+  },
+  {
+    title: "Explainability & Audit",
+    description:
+      "Immutable evidence and traceability across every decision and approval.",
+  },
+];
+
+const servicesItems = [
+  {
+    title: "Enterprise AI Readiness",
+    description:
+      "Architecture, policy design, and governance onboarding for regulated AI deployments.",
+  },
+  {
+    title: "Operational Transformation",
+    description:
+      "Governed automation programs for DevOps, infrastructure, and security teams.",
+  },
+  {
+    title: "Managed Governance",
+    description:
+      "Continuous policy tuning, audits, and compliance reporting for critical environments.",
+  },
+];
+
+const insightsItems = [
+  {
+    title: "Governed AI in Production",
+    description: "Why policy-first AI is the only scalable path for autonomous operations.",
+  },
+  {
+    title: "Operational Risk Intelligence",
+    description: "How to convert observability into trusted decision workflows.",
+  },
+  {
+    title: "Human-in-Command Design",
+    description: "Designing approval chains that preserve accountability at scale.",
+  },
+];
+
 const useCases = [
   {
     title: "Critical Infrastructure",
@@ -125,27 +258,13 @@ const useCases = [
   },
 ];
 
-const heroCards = [
-  {
-    title: "Policy Enforcement",
-    description: "Rules-based gating across every AI decision and automation action.",
-  },
-  {
-    title: "Command Intelligence",
-    description: "Live operational telemetry for confident, risk-scored approvals.",
-  },
-  {
-    title: "Secure Orchestration",
-    description: "Approved execution across cloud, security, and infrastructure tools.",
-  },
-];
-
 const quickLinks = [
+  "Home",
+  "Solutions",
   "Platform",
-  "Governance",
-  "DevSecOps",
-  "Agentic AI",
-  "Use Cases",
+  "Technology",
+  "Services",
+  "Insights",
 ];
 
 export default function Home() {
@@ -159,15 +278,28 @@ export default function Home() {
               <Image src="/klynx-logo.png" alt="Klynx AI" width={46} height={46} />
             </div>
             <div>
-              <p className="text-lg font-semibold">Klynx AI</p>
+              <p className="brand-name">
+                <span className="brand-gradient">Klynx AI</span>
+              </p>
               <p className="text-xs uppercase tracking-[0.32em] text-slate-500">Governed AI Systems</p>
             </div>
           </div>
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
             {navItems.map((item) => (
-              <a key={item.href} href={item.href} className="nav-link">
-                {item.label}
-              </a>
+              <div key={item.href} className="nav-item">
+                <a href={item.href} className="nav-link">
+                  {item.label}
+                </a>
+                {item.children && (
+                  <div className="nav-dropdown">
+                    {item.children.map((child) => (
+                      <a key={child.href} href={child.href} className="nav-dropdown-link">
+                        {child.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </nav>
           <div className="hidden md:flex items-center gap-3">
@@ -185,38 +317,39 @@ export default function Home() {
         <section className="section hero" id="home">
           <div className="container hero-grid">
             <div className="space-y-6">
-              <div className="pill">Governed AI for Mission-Critical Operations</div>
+              <div className="pill">Enterprise Control Plane</div>
               <h1 className="hero-title">
-                Enterprise control for every autonomous decision
+                The control plane for governed AI and autonomous operations
               </h1>
               <p className="hero-subtitle">
-                Klynx AI delivers a policy-first platform that governs AI, agentic workflows, and
-                automated execution across critical infrastructure and regulated industries.
+                Klynx AI unifies policy governance, agentic workflows, and real-time intelligence
+                across mission-critical systems. Every recommendation is explainable, approved,
+                and auditable.
               </p>
               <div className="flex flex-wrap gap-4">
-                <a className="btn-primary" href="#platform">Discover the Platform</a>
-                <a className="btn-outline" href="#contact">Book an Executive Briefing</a>
+                <a className="btn-primary" href="#solutions">Discover Solutions</a>
+                <a className="btn-outline" href="#contact">Book a Demo</a>
               </div>
               <div className="hero-trust">
-                <span>Policy-First</span>
-                <span>Human-Approved</span>
-                <span>Audit-Ready</span>
+                <span>Trusted</span>
+                <span>Auditable</span>
+                <span>Mission-Ready</span>
               </div>
             </div>
             <div className="hero-panel">
               <div className="hero-panel-grid">
-                {heroCards.map((card) => (
-                  <div key={card.title} className="hero-panel-card">
+                {heroSignals.map((signal) => (
+                  <div key={signal.title} className="hero-panel-card">
                     <div className="hero-panel-icon" />
                     <div>
-                      <h3>{card.title}</h3>
-                      <p>{card.description}</p>
+                      <h3>{signal.title}</h3>
+                      <p>{signal.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="hero-panel-summary">
-                <p className="text-sm uppercase tracking-[0.28em] text-slate-400">Governance Cockpit</p>
+                <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Governance Cockpit</p>
                 <h3>Live decision oversight with full evidence traceability.</h3>
               </div>
             </div>
@@ -228,9 +361,7 @@ export default function Home() {
             <div className="section-heading">
               <p className="eyebrow">Platform</p>
               <h2>One platform. Every decision governed.</h2>
-              <p>
-                Unify intelligence, policy, and execution to keep autonomous operations accountable.
-              </p>
+              <p>Combine policy, intelligence, and execution in a single control plane.</p>
             </div>
             <div className="card-grid">
               {platformItems.map((item) => (
@@ -307,6 +438,25 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section" id="solutions">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Solutions</p>
+              <h2>Mission-specific solutions for regulated environments</h2>
+              <p>Each solution is governed, policy-first, and fully auditable.</p>
+            </div>
+            <div className="solution-grid">
+              {solutionCards.map((item) => (
+                <div key={item.id} id={item.id} className="solution-card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                  <span className="solution-link">Learn more →</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="section" id="use-cases">
           <div className="container">
             <div className="section-heading">
@@ -327,12 +477,66 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section section-contrast" id="technology">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Technology</p>
+              <h2>Built on trusted systems engineering</h2>
+              <p>Secure, resilient, and designed for enterprise governance.</p>
+            </div>
+            <div className="card-grid">
+              {technologyItems.map((item) => (
+                <div key={item.title} className="card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="services">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Services</p>
+              <h2>Partner with Klynx for transformation</h2>
+              <p>Strategy, implementation, and managed governance support.</p>
+            </div>
+            <div className="card-grid">
+              {servicesItems.map((item) => (
+                <div key={item.title} className="card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="insights">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Insights</p>
+              <h2>Leadership for governed AI operations</h2>
+              <p>Thought leadership on policy-first autonomy and accountable AI.</p>
+            </div>
+            <div className="card-grid">
+              {insightsItems.map((item) => (
+                <div key={item.title} className="card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="section" id="contact">
           <div className="container">
             <div className="section-heading">
               <p className="eyebrow">Contact</p>
               <h2>Connect with Klynx AI</h2>
-              <p>Share your mission and governance requirements. We will respond within 24 hours.</p>
+              <p>Tell us about your program and we will respond within 24 hours.</p>
             </div>
             <div className="contact-card">
               <form className="contact-form" action="mailto:support@klynxai.com" method="post" encType="text/plain">
@@ -341,7 +545,7 @@ export default function Home() {
                   <input name="email" type="email" placeholder="Your email" required />
                 </div>
                 <input name="subject" placeholder="Subject" required />
-                <textarea name="message" placeholder="Describe your governance goals" rows={4} required />
+                <textarea name="message" placeholder="Tell us about your needs" rows={4} required />
                 <div className="flex flex-wrap items-center gap-3">
                   <button className="btn-primary" type="submit">Send Message</button>
                   <p className="text-xs text-slate-500">
@@ -360,7 +564,7 @@ export default function Home() {
           <div>
             <p className="footer-title">Klynx AI</p>
             <p className="footer-text">
-              Enterprise governance for autonomous systems, AI decisioning, and regulated operations.
+              Governed AI systems for critical infrastructure, enterprises, and public-sector leaders.
             </p>
           </div>
           <div>
@@ -374,7 +578,7 @@ export default function Home() {
           <div>
             <p className="footer-title">Contact</p>
             <p className="footer-text">support@klynxai.com</p>
-            <p className="footer-text">Book a demo or governance briefing.</p>
+            <p className="footer-text">Book a demo or partnership call.</p>
           </div>
         </div>
         <div className="container footer-bottom">
