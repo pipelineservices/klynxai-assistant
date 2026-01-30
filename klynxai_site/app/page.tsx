@@ -267,6 +267,15 @@ const quickLinks = [
   "Insights",
 ];
 
+const footerInsights = ["Governed AI in Production", "Operational Risk Intelligence", "Human-in-Command Design"];
+const footerTechnology = ["AI & Machine Learning", "Data Analytics", "IoT + Edge"];
+const footerContact = {
+  address: "2000 Corporate Ridge, Suite 500",
+  city: "Reston, VA 20191",
+  phone: "+1 571 560 0820",
+  email: "support@klynxai.com",
+};
+
 export default function Home() {
   return (
     <div className="bg-surface text-slate-900">
@@ -561,10 +570,16 @@ export default function Home() {
 
       <footer className="site-footer">
         <div className="container footer-grid">
-          <div>
-            <p className="footer-title">Klynx AI</p>
+          <div className="footer-brand">
+            <div className="footer-logo">
+              <Image src="/klynx-logo.png" alt="Klynx AI" width={54} height={54} />
+            </div>
+            <p className="footer-title">
+              <span className="brand-gradient">Klynx AI</span>
+            </p>
             <p className="footer-text">
-              Governed AI systems for critical infrastructure, enterprises, and public-sector leaders.
+              Governed AI systems delivering policy-first control for critical infrastructure and regulated
+              enterprises. Every decision stays accountable, auditable, and mission-ready.
             </p>
           </div>
           <div>
@@ -576,14 +591,37 @@ export default function Home() {
             </ul>
           </div>
           <div>
-            <p className="footer-title">Contact</p>
-            <p className="footer-text">support@klynxai.com</p>
-            <p className="footer-text">Book a demo or partnership call.</p>
+            <p className="footer-title">Insights</p>
+            <ul>
+              {footerInsights.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="footer-title">Technology</p>
+            <ul>
+              {footerTechnology.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="footer-title">Contact Us</p>
+            <p className="footer-text">{footerContact.address}</p>
+            <p className="footer-text">{footerContact.city}</p>
+            <p className="footer-text">{footerContact.phone}</p>
+            <p className="footer-text">{footerContact.email}</p>
+            <div className="footer-socials">
+              <span className="social-chip">in</span>
+              <span className="social-chip">f</span>
+              <span className="social-chip">x</span>
+            </div>
           </div>
         </div>
         <div className="container footer-bottom">
           <span>© 2026 Klynx AI. All rights reserved.</span>
-          <span>Governed AI. Human authority. Trusted autonomy.</span>
+          <span>Privacy Policy | Terms and Conditions</span>
         </div>
       </footer>
     </div>

@@ -500,27 +500,82 @@ body {
   }
 
   .site-footer {
-    border-top: 1px solid var(--klynx-border);
-    padding: 24px 0 40px;
-    color: var(--klynx-muted);
+    background: #0a5b67;
+    color: #e6f4f7;
+    padding: 36px 0 0;
+    margin-top: 60px;
+    position: relative;
+  }
+
+  .site-footer::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 120px;
+    background-image: radial-gradient(circle, rgba(230, 244, 247, 0.4) 1px, transparent 1.5px);
+    background-size: 28px 28px;
+    opacity: 0.35;
   }
 
   .footer-grid {
     display: grid;
-    gap: 24px;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    margin-bottom: 24px;
+    gap: 28px;
+    grid-template-columns: 1.3fr repeat(4, minmax(150px, 1fr));
+    margin-bottom: 28px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-brand {
+    display: grid;
+    gap: 14px;
+  }
+
+  .footer-logo {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .footer-title {
-    font-weight: 600;
-    color: var(--klynx-text);
+    font-weight: 700;
+    color: #ffffff;
     margin-bottom: 8px;
   }
 
   .footer-text {
-    color: var(--klynx-muted);
+    color: rgba(230, 244, 247, 0.78);
     font-size: 0.9rem;
+  }
+
+  .site-footer ul {
+    display: grid;
+    gap: 10px;
+    color: rgba(230, 244, 247, 0.78);
+    font-size: 0.92rem;
+  }
+
+  .footer-socials {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .social-chip {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .footer-bottom {
@@ -529,7 +584,11 @@ body {
     gap: 12px;
     justify-content: space-between;
     font-size: 0.85rem;
-    color: var(--klynx-muted);
+    color: rgba(230, 244, 247, 0.7);
+    border-top: 1px solid rgba(230, 244, 247, 0.2);
+    padding: 16px 0 24px;
+    position: relative;
+    z-index: 1;
   }
 
   .metrics {
@@ -566,5 +625,8 @@ body {
   .hero-trust {
     flex-direction: column;
     letter-spacing: 0.2em;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr;
   }
 }
