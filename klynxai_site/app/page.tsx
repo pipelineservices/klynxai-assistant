@@ -270,8 +270,6 @@ const quickLinks = [
 const footerInsights = ["Governed AI in Production", "Operational Risk Intelligence", "Human-in-Command Design"];
 const footerTechnology = ["AI & Machine Learning", "Data Analytics", "IoT + Edge"];
 const footerContact = {
-  address: "2000 Corporate Ridge, Suite 500",
-  city: "Reston, VA 20191",
   phone: "+1 571 560 0820",
   email: "support@klynxai.com",
 };
@@ -608,8 +606,6 @@ export default function Home() {
           </div>
           <div>
             <p className="footer-title">Contact Us</p>
-            <p className="footer-text">{footerContact.address}</p>
-            <p className="footer-text">{footerContact.city}</p>
             <p className="footer-text">{footerContact.phone}</p>
             <p className="footer-text">{footerContact.email}</p>
             <div className="footer-socials">
