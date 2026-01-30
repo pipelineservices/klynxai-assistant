@@ -8,6 +8,11 @@ const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
 export const metadata: Metadata = {
   title: "Klynx AI",
   description: "The control plane for governed AI and autonomous operations.",
+  icons: {
+    icon: "/klynx-logo.png",
+    apple: "/klynx-logo.png",
+    shortcut: "/klynx-logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
