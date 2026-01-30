@@ -1,4 +1,5 @@
 import Image from "next/image";
+import klynxLogo from "../public/klynx-logo.png";
 
 const navItems = [
   { label: "Home", href: "#home" },
@@ -282,7 +283,7 @@ export default function Home() {
         <div className="container flex items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="logo-frame">
-              <Image src="/klynx-logo.png" alt="Klynx AI" width={46} height={46} />
+              <Image src={klynxLogo} alt="Klynx AI" width={46} height={46} priority />
             </div>
             <div>
               <p className="brand-name">
@@ -570,7 +571,7 @@ export default function Home() {
         <div className="container footer-grid">
           <div className="footer-brand">
             <div className="footer-logo">
-              <Image src="/klynx-logo.png" alt="Klynx AI" width={54} height={54} />
+              <Image src={klynxLogo} alt="Klynx AI" width={54} height={54} />
             </div>
             <p className="footer-title">
               <span className="brand-gradient">Klynx AI</span>
