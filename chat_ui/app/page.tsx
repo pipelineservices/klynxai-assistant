@@ -1216,7 +1216,24 @@ export default function Page() {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <img src="/klynx-logo.png" alt="Klynx AI" style={{ height: 32, width: 32, objectFit: "contain" }} />
+          <img src="/klynx-logo.png" alt="Klynx logo" style={{ height: 32, width: 32, objectFit: "contain" }} />
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: 1.1,
+              textTransform: "uppercase",
+              background: "linear-gradient(110deg,#60a5fa,#22d3ee,#4ade80,#facc15,#f97316,#f472b6)",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+              textAlign: "center",
+              textShadow: colors.isDark ? "0 0 10px rgba(56,189,248,0.35)" : "0 0 8px rgba(14,165,233,0.25)",
+            }}
+          >
+            Klynx Retail
+            <br />
+            Assistant
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               onClick={newChat}
@@ -1565,19 +1582,29 @@ export default function Page() {
               justifyContent: "center",
               color: colors.text,
               fontWeight: 900,
-              fontSize: 28,
-              letterSpacing: 0.5,
+              fontSize: "clamp(18px, 2.4vw, 26px)",
+              letterSpacing: 1.2,
+              padding: "0 16px",
             }}
           >
-            <span
-              style={{
-                background: "linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b,#ef4444)",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              klynxai
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+              <img
+                src="/klynx-logo.png"
+                alt="Klynx logo"
+                style={{ height: 30, width: 30, objectFit: "contain" }}
+              />
+              <span
+                style={{
+                  background: "linear-gradient(95deg,#60a5fa,#22d3ee,#34d399,#facc15,#f97316,#f472b6)",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                  textTransform: "uppercase",
+                  textShadow: colors.isDark ? "0 0 12px rgba(56,189,248,0.4)" : "0 0 10px rgba(14,165,233,0.35)",
+                }}
+              >
+                Klynx Retail Assistant
+              </span>
+            </div>
           </header>
         ) : null}
 
@@ -1598,9 +1625,57 @@ export default function Page() {
                 <div style={{ marginBottom: 10 }}>
                   <img
                     src="/klynx-logo.png"
-                    alt="Klynx AI"
+                    alt="Klynx logo"
                     style={{ height: 96, width: 96, objectFit: "contain", margin: "0 auto" }}
                   />
+                </div>
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 900,
+                    letterSpacing: 1.4,
+                    background: "linear-gradient(120deg,#38bdf8,#22d3ee,#4ade80,#facc15,#f97316,#f472b6)",
+                    WebkitBackgroundClip: "text",
+                    color: "transparent",
+                    textTransform: "uppercase",
+                    textShadow: colors.isDark ? "0 0 16px rgba(56,189,248,0.45)" : "0 0 12px rgba(14,165,233,0.35)",
+                  }}
+                >
+                  Klynx Retail Assistant
+                </div>
+                <div style={{ marginTop: 10, fontSize: 15, color: colors.muted }}>
+                  Futuristic, brand-agnostic intelligence for every product scan.
+                </div>
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 12,
+                    textAlign: "left",
+                  }}
+                >
+                  {[
+                    "Safety + nutrition insights: safe-to-eat guidance, allergens, parabens, and chemical flags.",
+                    "Complete product breakdowns with ingredient, additive, and sourcing transparency.",
+                    "Mobile app experience for in-store and on-the-go scans.",
+                    "Global integrations with retailers like Amazon, Best Buy, and more.",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        border: `1px solid ${colors.panelBorder}`,
+                        background: colors.cardAssistant,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: colors.text,
+                      }}
+                    >
+                      {item}
+                    </div>
+                  ))}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 13, color: colors.muted }}>
                   Press Enter to send. Shift+Enter for new line. Attach files with +.
@@ -2112,4 +2187,3 @@ export default function Page() {
     </div>
   );
 }
-
