@@ -14,6 +14,7 @@ const policyDetails = document.getElementById("policyDetails");
 const decisionQueue = document.getElementById("decisionQueue");
 const scanTools = document.getElementById("scanTools");
 const intelFields = document.getElementById("intelFields");
+const intelBadges = document.getElementById("intelBadges");
 const integrationGrid = document.getElementById("integrationGrid");
 let lastItems = [];
 let lastDecisions = [];
@@ -40,8 +41,8 @@ if (document.body.classList.contains("embed")) {
 }
 
 const mockIntel = {
+  safety: { label: "Safe", tone: "safe" },
   ingredients: "Water, natural flavors, citrus extract, vitamin C",
-  safety: "Safe to consume (low risk)",
   chemicals: "No parabens detected",
   allergens: "May contain traces of soy",
   sustainability: "82/100 (recyclable packaging)",
@@ -56,9 +57,19 @@ const mockIntegrations = [
 
 function renderProductIntel(contextLabel) {
   if (!intelFields) return;
+  if (intelBadges) {
+    intelBadges.innerHTML = "";
+    const badge = document.createElement("span");
+    badge.className = `badge ${mockIntel.safety.tone}`;
+    badge.textContent = `Safety: ${mockIntel.safety.label}`;
+    intelBadges.appendChild(badge);
+    const infoBadge = document.createElement("span");
+    infoBadge.className = "badge info";
+    infoBadge.textContent = "Mock data";
+    intelBadges.appendChild(infoBadge);
+  }
   const rows = [
     ["Ingredients / Materials", mockIntel.ingredients],
-    ["Safety", mockIntel.safety],
     ["Chemicals / Parabens", mockIntel.chemicals],
     ["Allergens", mockIntel.allergens],
     ["Sustainability", mockIntel.sustainability],
