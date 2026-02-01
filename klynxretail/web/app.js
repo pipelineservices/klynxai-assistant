@@ -12,12 +12,19 @@ const governanceBanner = document.getElementById("governanceBanner");
 const policyRisk = document.getElementById("policyRisk");
 const policyDetails = document.getElementById("policyDetails");
 const decisionQueue = document.getElementById("decisionQueue");
+const scanTools = document.getElementById("scanTools");
+const intelFields = document.getElementById("intelFields");
+const integrationGrid = document.getElementById("integrationGrid");
 let lastItems = [];
 let lastDecisions = [];
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("embed") === "1") {
   document.body.classList.add("embed");
+}
+const isFuturistic = params.get("ui") === "futuristic";
+if (isFuturistic) {
+  document.body.dataset.theme = "futuristic";
 }
 const brandName = params.get("brandName");
 const brandLogo = params.get("brandLogo");
@@ -30,6 +37,57 @@ if (document.body.classList.contains("embed")) {
   } else {
     embedLogo.classList.add("hidden");
   }
+}
+
+const mockIntel = {
+  ingredients: "Water, natural flavors, citrus extract, vitamin C",
+  safety: "Safe to consume (low risk)",
+  chemicals: "No parabens detected",
+  allergens: "May contain traces of soy",
+  sustainability: "82/100 (recyclable packaging)",
+  compliance: "FDA: compliant · EU: compliant · CA Prop 65: low risk",
+};
+const mockIntegrations = [
+  { name: "Amazon", status: "Connected via Partner API (Demo Mode)" },
+  { name: "Best Buy", status: "Connected via Partner API (Demo Mode)" },
+  { name: "Walmart", status: "Connected via Partner API (Demo Mode)" },
+  { name: "Global Retailers", status: "Connected via Partner API (Demo Mode)" },
+];
+
+function renderProductIntel(contextLabel) {
+  if (!intelFields) return;
+  const rows = [
+    ["Ingredients / Materials", mockIntel.ingredients],
+    ["Safety", mockIntel.safety],
+    ["Chemicals / Parabens", mockIntel.chemicals],
+    ["Allergens", mockIntel.allergens],
+    ["Sustainability", mockIntel.sustainability],
+    ["Compliance", mockIntel.compliance],
+  ];
+  intelFields.innerHTML = "";
+  rows.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    row.innerHTML = `<span>${label}</span><span>${value}</span>`;
+    intelFields.appendChild(row);
+  });
+  if (contextLabel) {
+    const row = document.createElement("div");
+    row.className = "intel-row";
+    row.innerHTML = `<span>Source</span><span>${contextLabel}</span>`;
+    intelFields.appendChild(row);
+  }
+}
+
+function renderIntegrations() {
+  if (!integrationGrid) return;
+  integrationGrid.innerHTML = "";
+  mockIntegrations.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "integration-card";
+    card.innerHTML = `<div class="integration-title">${item.name}</div><div class="integration-sub">${item.status}</div>`;
+    integrationGrid.appendChild(card);
+  });
 }
 
 const sessionId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
@@ -184,6 +242,9 @@ async function send() {
   }
   const retailers = Array.from(new Set((data.items || []).map((i) => i.retailer).filter(Boolean)));
   track("chat.response", { items: (data.items || []).length, retailers });
+  if (isFuturistic) {
+    renderProductIntel("Typed query");
+  }
 }
 
 async function exportCart() {
@@ -226,3 +287,18 @@ input.addEventListener("keydown", (e) => {
 });
 
 track("page.view", { embed: document.body.classList.contains("embed") });
+
+if (isFuturistic) {
+  renderProductIntel("Demo data");
+  renderIntegrations();
+  if (scanTools) {
+    scanTools.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const scanType = target.getAttribute("data-scan");
+      if (!scanType) return;
+      // TODO: Replace mock scan triggers with real device integrations.
+      renderProductIntel(`${scanType} scan`);
+    });
+  }
+}

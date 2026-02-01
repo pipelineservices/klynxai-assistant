@@ -9,8 +9,15 @@
 <body>
   <div class="app">
     <header class="header">
-      <div class="brand">Klynx Retail Assistant</div>
+      <div class="brand brand-default">Klynx Retail Assistant</div>
+      <div class="brand-row feature-futuristic">
+        <img class="brand-logo" src="/klynx-logo.png" alt="Klynx logo" />
+        <div class="brand brand-gradient">Klynx Retail Assistant</div>
+      </div>
       <div class="sub">Retailer-agnostic demo (mock data)</div>
+      <div class="sub feature-futuristic">
+        Scan any product for safety, ingredient, and chemical insights across global retailers.
+      </div>
     </header>
 
     <main class="main">
@@ -23,6 +30,13 @@
           <div class="gov-title">Governed Retail Decisions</div>
           <div id="policyRisk" class="gov-risk"></div>
           <div id="policyDetails" class="gov-details"></div>
+        </div>
+        <div id="scanTools" class="scan-tools feature-futuristic">
+          <button class="scan-btn" data-scan="typed" type="button">Typed</button>
+          <button class="scan-btn" data-scan="barcode" type="button">Barcode</button>
+          <button class="scan-btn" data-scan="qr" type="button">QR</button>
+          <button class="scan-btn" data-scan="image" type="button">Image</button>
+          <span class="scan-note">Demo mode • No device access yet</span>
         </div>
         <div id="messages" class="messages"></div>
         <div class="composer">
@@ -40,6 +54,14 @@
         <div class="panel-sub">Decision Queue</div>
         <div id="decisionQueue" class="queue"></div>
         <div id="cards" class="cards"></div>
+        <div id="productIntel" class="intel-card feature-futuristic">
+          <div class="panel-title">Product Intelligence</div>
+          <div class="panel-sub">Safety + Compliance</div>
+          <div id="intelFields" class="intel-fields"></div>
+          <div class="intel-note">Connected via Partner API (Demo Mode)</div>
+        </div>
+        <div class="panel-title feature-futuristic">Integrations</div>
+        <div class="integration-grid feature-futuristic" id="integrationGrid"></div>
       </aside>
     </main>
   </div>
