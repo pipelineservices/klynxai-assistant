@@ -13,11 +13,22 @@ const policyRisk = document.getElementById("policyRisk");
 const policyDetails = document.getElementById("policyDetails");
 const decisionQueue = document.getElementById("decisionQueue");
 const scanTools = document.getElementById("scanTools");
+const scanModal = document.getElementById("scanModal");
+const scanVideo = document.getElementById("scanVideo");
+const scanModalClose = document.getElementById("scanModalClose");
+const scanModalTitle = document.getElementById("scanModalTitle");
+const scanHint = document.getElementById("scanHint");
+const scanImageInput = document.getElementById("scanImageInput");
+const scanNote = scanTools ? scanTools.querySelector(".scan-note") : null;
 const intelFields = document.getElementById("intelFields");
 const intelBadges = document.getElementById("intelBadges");
 const integrationGrid = document.getElementById("integrationGrid");
 let lastItems = [];
 let lastDecisions = [];
+let scanMode = "typed";
+let scanStream = null;
+let scanDetector = null;
+let scanActive = false;
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("embed") === "1") {
@@ -120,6 +131,118 @@ function addMessage(role, text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
+function setScanNote(text) {
+  if (scanNote) scanNote.textContent = text;
+}
+
+function setScanActiveButton(mode) {
+  if (!scanTools) return;
+  const buttons = scanTools.querySelectorAll(".scan-btn");
+  buttons.forEach((btn) => {
+    if (!(btn instanceof HTMLElement)) return;
+    const btnMode = btn.getAttribute("data-scan");
+    if (btnMode === mode) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+}
+
+function stopCameraScan() {
+  scanActive = false;
+  if (scanVideo) {
+    scanVideo.pause();
+    scanVideo.srcObject = null;
+  }
+  if (scanStream) {
+    scanStream.getTracks().forEach((track) => track.stop());
+    scanStream = null;
+  }
+  if (scanModal) scanModal.classList.add("hidden");
+}
+
+function handleScanValue(value, mode) {
+  if (!value) return;
+  input.value = value;
+  addMessage("user", `${mode.toUpperCase()} scan: ${value}`);
+  send();
+  track("scan.complete", { mode, value });
+}
+
+async function startCameraScan(mode) {
+  if (!scanVideo || !scanModal || !scanModalTitle || !scanHint) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    addMessage("assistant", "Camera access is not supported in this browser.");
+    return;
+  }
+  if (!("BarcodeDetector" in window)) {
+    addMessage("assistant", "Barcode scanning is not supported in this browser. Try Image instead.");
+    return;
+  }
+
+  const formats = mode === "qr"
+    ? ["qr_code"]
+    : ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "qr_code", "pdf417", "data_matrix", "aztec"];
+
+  scanDetector = new BarcodeDetector({ formats });
+  scanModalTitle.textContent = mode === "qr" ? "QR Scan" : "Barcode Scan";
+  scanHint.textContent = "Align the code inside the frame.";
+  scanModal.classList.remove("hidden");
+
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+      audio: false,
+    });
+    scanVideo.srcObject = scanStream;
+    await scanVideo.play();
+    scanActive = true;
+  } catch (error) {
+    addMessage("assistant", "Camera permission denied or unavailable.");
+    stopCameraScan();
+    return;
+  }
+
+  const scanLoop = async () => {
+    if (!scanActive || !scanDetector || !scanVideo) return;
+    try {
+      const results = await scanDetector.detect(scanVideo);
+      if (results && results.length) {
+        const value = results[0].rawValue || results[0].data || "";
+        handleScanValue(value, mode);
+        stopCameraScan();
+        return;
+      }
+    } catch (error) {
+      // ignore and keep scanning
+    }
+    requestAnimationFrame(scanLoop);
+  };
+  requestAnimationFrame(scanLoop);
+}
+
+async function handleImageScan(file) {
+  if (!file) return;
+  if ("BarcodeDetector" in window) {
+    try {
+      const detector = new BarcodeDetector({
+        formats: ["qr_code", "ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "pdf417", "data_matrix", "aztec"],
+      });
+      const bitmap = await createImageBitmap(file);
+      const results = await detector.detect(bitmap);
+      if (results && results.length) {
+        const value = results[0].rawValue || results[0].data || file.name;
+        handleScanValue(value, "image");
+        return;
+      }
+    } catch (error) {
+      // fall through
+    }
+  }
+  addMessage("assistant", `Image received: ${file.name}`);
+  track("scan.image.upload", { name: file.name, size: file.size });
+}
 
 function addComparison(items) {
   if (!items || !items.length) return;
@@ -303,14 +426,53 @@ track("page.view", { embed: document.body.classList.contains("embed") });
 if (isFuturistic) {
   renderProductIntel("Demo data");
   renderIntegrations();
-  if (scanTools) {
-    scanTools.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
-      const scanType = target.getAttribute("data-scan");
-      if (!scanType) return;
-      // TODO: Replace mock scan triggers with real device integrations.
-      renderProductIntel(`${scanType} scan`);
-    });
-  }
+}
+
+if (scanTools) {
+  setScanActiveButton("typed");
+  setScanNote("Type mode ready.");
+
+  scanTools.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const scanType = target.getAttribute("data-scan");
+    if (!scanType) return;
+    scanMode = scanType;
+    setScanActiveButton(scanType);
+    stopCameraScan();
+
+    if (scanType === "typed") {
+      setScanNote("Type mode ready.");
+      input.focus();
+      return;
+    }
+
+    if (scanType === "image") {
+      setScanNote("Select an image to analyze.");
+      if (scanImageInput) scanImageInput.click();
+      return;
+    }
+
+    if (scanType === "barcode" || scanType === "qr") {
+      setScanNote("Requesting camera access...");
+      startCameraScan(scanType);
+      return;
+    }
+  });
+}
+
+if (scanModalClose) {
+  scanModalClose.addEventListener("click", () => {
+    stopCameraScan();
+  });
+}
+
+if (scanImageInput) {
+  scanImageInput.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const file = target.files && target.files[0];
+    if (file) handleImageScan(file);
+    target.value = "";
+  });
 }

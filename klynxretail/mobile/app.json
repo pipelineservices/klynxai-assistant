@@ -12,6 +12,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#0b1220"
     },
-    "assetBundlePatterns": ["**/*"]
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "Klynx Retail Assistant needs camera access to scan barcodes and QR codes.",
+        "NSPhotoLibraryUsageDescription": "Klynx Retail Assistant needs photo access to scan product images."
+      }
+    },
+    "android": {
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
+    }
   }
 }

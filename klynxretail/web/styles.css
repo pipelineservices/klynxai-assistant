@@ -178,7 +178,65 @@ body[data-theme="futuristic"] .panel-sub { color: #94a3b8; }
   font-size: 12px;
   cursor: pointer;
 }
+.scan-btn.active {
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+}
 .scan-note { font-size: 11px; color: #94a3b8; margin-left: auto; }
+
+.scan-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.scan-modal.hidden { display: none; }
+.scan-modal-content {
+  width: min(92vw, 520px);
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scan-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scan-modal-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.scan-close {
+  border: none;
+  background: #e2e8f0;
+  color: #0f172a;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.scan-video {
+  width: 100%;
+  border-radius: 12px;
+  background: #0f172a;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+.scan-hint {
+  font-size: 12px;
+  color: #64748b;
+}
 
 .intel-card {
   margin-top: 16px;
