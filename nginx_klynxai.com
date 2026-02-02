@@ -12,7 +12,7 @@ server {
     }
 
     location /incidents {
-        proxy_pass http://127.0.0.1:3200/incidents;
+        proxy_pass http://127.0.0.1:3000/incidents;
         proxy_http_version 1.1;
 
         proxy_set_header Host $host;
