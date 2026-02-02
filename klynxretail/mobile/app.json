@@ -14,12 +14,14 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
+      "bundleIdentifier": "com.klynx.shopassist",
       "infoPlist": {
         "NSCameraUsageDescription": "Klynx Retail Assistant needs camera access to scan barcodes and QR codes.",
         "NSPhotoLibraryUsageDescription": "Klynx Retail Assistant needs photo access to scan product images."
       }
     },
     "android": {
+      "package": "com.klynx.shopassist",
       "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
     }
   }
