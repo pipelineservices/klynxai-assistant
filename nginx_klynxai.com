@@ -12,6 +12,7 @@ server {
     }
 
     location /incidents {
+        # Incidents UI lives on chat UI (Next.js) at :3000
         proxy_pass http://127.0.0.1:3000/incidents;
         proxy_http_version 1.1;
 
@@ -22,6 +23,7 @@ server {
     }
 
     location / {
+        # Marketing site (Next.js) runs on :3200
         proxy_pass http://127.0.0.1:3200;
         proxy_http_version 1.1;
 
