@@ -29,7 +29,8 @@ if (isFuturistic) {
 }
 const brandName = params.get("brandName");
 const brandLogo = params.get("brandLogo");
-if (document.body.classList.contains("embed")) {
+const showEmbedBar = params.get("embedBar") === "1";
+if (document.body.classList.contains("embed") && showEmbedBar && embedBar && embedTitle && embedLogo) {
   embedBar.classList.remove("hidden");
   if (brandName) embedTitle.textContent = brandName;
   if (brandLogo) {
