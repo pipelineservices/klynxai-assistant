@@ -627,7 +627,7 @@ export default function Page() {
     const isDark = theme === "dark";
     return {
       isDark,
-      pageBg: isDark ? "#0b1220" : "#ffffff",
+      pageBg: "radial-gradient(1200px 800px at 10% -10%, rgba(56,189,248,0.18), transparent 60%), radial-gradient(900px 700px at 90% 10%, rgba(34,197,94,0.16), transparent 55%), radial-gradient(900px 700px at 70% 90%, rgba(245,158,11,0.18), transparent 60%), linear-gradient(135deg, #05070f 0%, #0b1220 45%, #0a1a2f 100%)",
       sidebarBg: isDark ? "#0f172a" : "#f9fafb",
       panelBorder: isDark ? "#1f2937" : "#e5e7eb",
       text: isDark ? "#e5e7eb" : "#111827",
@@ -642,7 +642,7 @@ export default function Page() {
       chipBorder: isDark ? "#334155" : "#d1d5db",
       btnBg: isDark ? "#111827" : "#ffffff",
       btnBorder: isDark ? "#334155" : "#d1d5db",
-      headerBg: isDark ? "#0b1220" : "#ffffff",
+      headerBg: "rgba(8,12,24,0.72)",
       sidebarHover: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
       sourceBg: isDark ? "#0b1220" : "#ffffff",
     };
@@ -1562,22 +1562,28 @@ export default function Page() {
               background: colors.headerBg,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
+              justifyContent: "space-between",
               color: colors.text,
               fontWeight: 900,
               fontSize: 28,
               letterSpacing: 0.5,
+              padding: "0 18px",
+              backdropFilter: "blur(10px)",
             }}
           >
-            <span
-              style={{
-                background: "linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b,#ef4444)",
-                WebkitBackgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              klynxai
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/klynx-logo.png" alt="Klynx AI" style={{ height: 28, width: 28, objectFit: "contain" }} />
+              <span
+                style={{
+                  background: "linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b,#ef4444)",
+                  WebkitBackgroundClip: "text",
+                  color: "transparent",
+                }}
+              >
+                Klynx AI
+              </span>
+            </div>
+            <div style={{ width: 28 }} />
           </header>
         ) : null}
 
