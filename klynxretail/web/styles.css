@@ -362,11 +362,16 @@ body.embed .actions {
 
 .embed-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid #e2e8f0;
   background: #fff;
+}
+.embed-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .embed-logo {
@@ -379,6 +384,15 @@ body.embed .actions {
 .embed-title {
   font-weight: 700;
   font-size: 14px;
+}
+.embed-welcome {
+  background: #ffedd5;
+  color: #7c2d12;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  max-width: 640px;
 }
 
 /* Dashboard */
