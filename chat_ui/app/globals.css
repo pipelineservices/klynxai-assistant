@@ -1,5 +1,42 @@
 @import "katex/dist/katex.min.css";
 
+:root {
+  /* Default Light Theme */
+  --klynx-bg-page: #ffffff;
+  --klynx-bg-sidebar: #f9fafb;
+  --klynx-border-panel: #e5e7eb;
+  --klynx-text-primary: #111827;
+  --klynx-text-muted: #6b7280;
+  --klynx-bg-card-user: #2563eb;
+  --klynx-bg-card-ai: #e5e7eb;
+  --klynx-bg-input: #ffffff;
+  --klynx-bg-btn: #ffffff;
+  --klynx-border-btn: #d1d5db;
+  --klynx-bg-header: #ffffff;
+  --klynx-glass-bg: rgba(255, 255, 255, 0.7);
+  --klynx-glass-border: rgba(255, 255, 255, 0.5);
+}
+
+body.dark {
+  /* Futuristic Dark Theme */
+  --klynx-bg-page: #0b1220; /* Deep blue-black */
+  --klynx-bg-sidebar: #0f172a;
+  --klynx-border-panel: #1f2937;
+  --klynx-text-primary: #e5e7eb;
+  --klynx-text-muted: #94a3b8;
+  --klynx-bg-card-user: #2563eb;
+  --klynx-bg-card-ai: #111827;
+  --klynx-bg-input: #0b1220;
+  --klynx-bg-btn: #111827;
+  --klynx-border-btn: #334155;
+  --klynx-bg-header: #0b1220; /* Fallback */
+  
+  /* Glassmorphism Overrides handled in components */
+  --klynx-glass-bg: rgba(15, 23, 42, 0.6);
+  --klynx-glass-border: rgba(255, 255, 255, 0.08);
+  --klynx-neon-accent: #38bdf8;
+}
+
 html,
 body {
   height: 100%;
@@ -7,79 +44,46 @@ body {
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Helvetica, Arial, sans-serif;
+  background: var(--klynx-bg-page);
+  color: var(--klynx-text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* Glassmorphism Utility Class */
+.glass-panel {
+  background: var(--klynx-glass-bg) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--klynx-glass-border) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Gradient Text Utility */
+.text-gradient {
+  background: linear-gradient(90deg, #38bdf8, #22c55e, #f59e0b, #ef4444);
+  -webkit-background-clip: text;
+  color: transparent;
+  background-clip: text;
+}
+
+/* Legacy Classes (keeping for safety) */
 .sidebar {
   width: 260px;
-  background: #f9fafb;
-  border-right: 1px solid #e5e7eb;
+  background: var(--klynx-bg-sidebar);
+  border-right: 1px solid var(--klynx-border-panel);
   padding: 12px;
   display: flex;
   flex-direction: column;
-}
-
-.new-btn {
-  padding: 10px;
-  margin-bottom: 12px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background: white;
-  cursor: pointer;
-}
-
-.chat-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.chat-item {
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-
-.chat-item:hover {
-  background: #e5e7eb;
-}
-
-.chat-item.active {
-  background: #dbeafe;
-  font-weight: 500;
 }
 
 .input-bar {
   display: flex;
   gap: 8px;
   padding: 12px;
-  border-top: 1px solid #e5e7eb;
-  background: #fff;
+  border-top: 1px solid var(--klynx-border-panel);
+  background: var(--klynx-bg-input);
 }
-
-.input-bar textarea {
-  flex: 1;
-  resize: none;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  height: 44px;
-}
-
-.input-bar button {
-  padding: 0 16px;
-  border-radius: 8px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  cursor: pointer;
-}
-
-.input-bar button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-

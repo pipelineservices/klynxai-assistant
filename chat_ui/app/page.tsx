@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ProductIntelligencePanel from "../components/retail/ProductIntelligencePanel";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -245,7 +246,7 @@ function Composer({
       if (speechRef.current) {
         speechRef.current.stop();
       }
-    } catch {}
+    } catch { }
     setIsListening(false);
     speechRef.current = null;
     finalTranscriptRef.current = "";
@@ -501,8 +502,8 @@ function Composer({
                     ? "#334155"
                     : "#e5e7eb"
                   : isBig
-                  ? "#0ea5e9"
-                  : "#2563eb",
+                    ? "#0ea5e9"
+                    : "#2563eb",
               color: "#fff",
               borderRadius: 999,
               width: isBig ? 46 : 40,
@@ -572,6 +573,7 @@ function Composer({
           </div>
         ) : null}
       </div>
+
     </form>
   );
 }
@@ -601,6 +603,7 @@ export default function Page() {
 
   /* ---------- NEW: Theme (dark/light) ---------- */
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [showRetailPanel, setShowRetailPanel] = useState(false);
 
   useEffect(() => {
     const saved = (typeof window !== "undefined" && localStorage.getItem(THEME_KEY)) || "";
@@ -617,6 +620,9 @@ export default function Page() {
 
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(THEME_KEY, theme);
+    // Apply class to body for CSS variables
+    document.body.classList.remove("light", "dark");
+    document.body.classList.add(theme);
   }, [theme]);
 
   function toggleTheme() {
@@ -627,24 +633,30 @@ export default function Page() {
     const isDark = theme === "dark";
     return {
       isDark,
-      pageBg: isDark ? "#0b1220" : "#ffffff",
-      sidebarBg: isDark ? "#0f172a" : "#f9fafb",
-      panelBorder: isDark ? "#1f2937" : "#e5e7eb",
-      text: isDark ? "#e5e7eb" : "#111827",
-      muted: isDark ? "#94a3b8" : "#6b7280",
+      // Mapping to CSS Variables defined in globals.css
+      pageBg: "var(--klynx-bg-page)",
+      sidebarBg: "var(--klynx-bg-sidebar)",
+      panelBorder: "var(--klynx-border-panel)",
+      text: "var(--klynx-text-primary)",
+      muted: "var(--klynx-text-muted)",
+
+      // Accents kept as explicit hex for now or mapped if needed
       accentBlue: isDark ? "#38bdf8" : "#0ea5e9",
       accentGreen: isDark ? "#22c55e" : "#16a34a",
       accentGold: isDark ? "#fbbf24" : "#f59e0b",
-      cardUser: "#2563eb",
-      cardAssistant: isDark ? "#111827" : "#e5e7eb",
-      inputBg: isDark ? "#0b1220" : "#ffffff",
-      chipBg: isDark ? "#0b1220" : "#f9fafb",
-      chipBorder: isDark ? "#334155" : "#d1d5db",
-      btnBg: isDark ? "#111827" : "#ffffff",
-      btnBorder: isDark ? "#334155" : "#d1d5db",
-      headerBg: isDark ? "#0b1220" : "#ffffff",
+
+      cardUser: "var(--klynx-bg-card-user)",
+      cardAssistant: "var(--klynx-bg-card-ai)",
+
+      inputBg: "var(--klynx-bg-input)",
+      chipBg: "var(--klynx-bg-btn)", // utilizing btn bg for chips
+      chipBorder: "var(--klynx-border-btn)",
+      btnBg: "var(--klynx-bg-btn)",
+      btnBorder: "var(--klynx-border-btn)",
+      headerBg: "var(--klynx-bg-header)",
+
       sidebarHover: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-      sourceBg: isDark ? "#0b1220" : "#ffffff",
+      sourceBg: "var(--klynx-bg-btn)",
     };
   }, [theme]);
 
@@ -839,7 +851,7 @@ export default function Page() {
           setActiveId(parsed[0].id);
           return;
         }
-      } catch {}
+      } catch { }
     }
     const first: ChatSession = { id: safeId(), title: "New chat", messages: [] };
     setSessions([first]);
@@ -1074,10 +1086,10 @@ export default function Page() {
       prev.map((s) =>
         s.id === activeId
           ? {
-              ...s,
-              title: s.messages.length === 0 ? userContent.slice(0, 40) : s.title,
-              messages: [...s.messages, { role: "user", content: userContent }, { role: "assistant", content: "" }],
-            }
+            ...s,
+            title: s.messages.length === 0 ? userContent.slice(0, 40) : s.title,
+            messages: [...s.messages, { role: "user", content: userContent }, { role: "assistant", content: "" }],
+          }
           : s
       )
     );
@@ -1567,8 +1579,10 @@ export default function Page() {
               fontWeight: 900,
               fontSize: 28,
               letterSpacing: 0.5,
+              gap: 12,
             }}
           >
+            <img src="/klynx-logo.png" alt="Klynx" style={{ height: 32, width: 32, objectFit: "contain" }} />
             <span
               style={{
                 background: "linear-gradient(90deg,#38bdf8,#22c55e,#f59e0b,#ef4444)",
@@ -1576,8 +1590,23 @@ export default function Page() {
                 color: "transparent",
               }}
             >
-              klynxai
+              Klynx
             </span>
+            <button
+              onClick={() => setShowRetailPanel(!showRetailPanel)}
+              style={{
+                marginLeft: 16,
+                fontSize: 11,
+                padding: "4px 8px",
+                borderRadius: 6,
+                border: `1px solid ${colors.panelBorder}`,
+                background: colors.btnBg,
+                cursor: "pointer",
+                fontWeight: 700
+              }}
+            >
+              ✨ Retail Intel
+            </button>
           </header>
         ) : null}
 
@@ -1607,23 +1636,23 @@ export default function Page() {
                 </div>
               </div>
 
-                <Composer
-                  variant="landing"
-                  colors={colors}
-                  input={input}
-                  setInput={setInput}
-                  isBusy={isBusy}
-                  isStreaming={isStreaming}
-                  isTyping={isTyping}
-                  onSend={() => void send()}
-                  suggestionSeed={lastUserText}
-                  attachments={attachments}
-                  openFilePicker={openFilePicker}
-                  removeAttachment={removeAttachment}
-                  fileInputRef={fileInputRef}
-                  handleFileChange={handleFileChange}
-                  composerRef={composerRef}
-                />
+              <Composer
+                variant="landing"
+                colors={colors}
+                input={input}
+                setInput={setInput}
+                isBusy={isBusy}
+                isStreaming={isStreaming}
+                isTyping={isTyping}
+                onSend={() => void send()}
+                suggestionSeed={lastUserText}
+                attachments={attachments}
+                openFilePicker={openFilePicker}
+                removeAttachment={removeAttachment}
+                fileInputRef={fileInputRef}
+                handleFileChange={handleFileChange}
+                composerRef={composerRef}
+              />
             </div>
           </div>
         ) : (
@@ -2028,27 +2057,34 @@ export default function Page() {
                 background: colors.pageBg,
               }}
             >
-                <Composer
-                  variant="bottom"
-                  colors={colors}
-                  input={input}
-                  setInput={setInput}
-                  isBusy={isBusy}
-                  isStreaming={isStreaming}
-                  isTyping={isTyping}
-                  onSend={() => void send()}
-                  suggestionSeed={lastUserText}
-                  attachments={attachments}
-                  openFilePicker={openFilePicker}
-                  removeAttachment={removeAttachment}
-                  fileInputRef={fileInputRef}
-                  handleFileChange={handleFileChange}
-                  composerRef={composerRef}
-                />
+              <Composer
+                variant="bottom"
+                colors={colors}
+                input={input}
+                setInput={setInput}
+                isBusy={isBusy}
+                isStreaming={isStreaming}
+                isTyping={isTyping}
+                onSend={() => void send()}
+                suggestionSeed={lastUserText}
+                attachments={attachments}
+                openFilePicker={openFilePicker}
+                removeAttachment={removeAttachment}
+                fileInputRef={fileInputRef}
+                handleFileChange={handleFileChange}
+                composerRef={composerRef}
+              />
             </div>
           </>
         )}
       </main>
+
+      {/* Retail Intelligence Panel (Right Side) */}
+      <ProductIntelligencePanel
+        isVisible={showRetailPanel}
+        onClose={() => setShowRetailPanel(false)}
+        colors={colors}
+      />
 
       {isMoreOpen ? (
         <div
