@@ -7,6 +7,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/klynx-logo.png" sizes="32x32" />
+        <link rel="apple-touch-icon" href="/klynx-logo.png" />
+      </head>
       <body>{children}</body>
     </html>
   );
