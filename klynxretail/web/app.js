@@ -29,6 +29,8 @@ let scanMode = "typed";
 let scanStream = null;
 let scanDetector = null;
 let scanActive = false;
+let scanReader = null;
+let lastScanError = "";
 
 const params = new URLSearchParams(window.location.search);
 if (params.get("embed") === "1") {
@@ -135,6 +137,14 @@ function setScanNote(text) {
   if (scanNote) scanNote.textContent = text;
 }
 
+function setScanError(message) {
+  if (message && message !== lastScanError) {
+    addMessage("assistant", message);
+    lastScanError = message;
+  }
+  setScanNote(message || "Ready.");
+}
+
 function setScanActiveButton(mode) {
   if (!scanTools) return;
   const buttons = scanTools.querySelectorAll(".scan-btn");
@@ -160,6 +170,13 @@ function stopCameraScan() {
     scanStream = null;
   }
   if (scanModal) scanModal.classList.add("hidden");
+  if (scanReader && scanReader.reset) {
+    try {
+      scanReader.reset();
+    } catch (error) {
+      // ignore
+    }
+  }
 }
 
 function handleScanValue(value, mode) {
@@ -170,22 +187,25 @@ function handleScanValue(value, mode) {
   track("scan.complete", { mode, value });
 }
 
+async function getZxingReader() {
+  if (scanReader) return scanReader;
+  const mod = await import("https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.min.js");
+  scanReader = new mod.BrowserMultiFormatReader();
+  return scanReader;
+}
+
 async function startCameraScan(mode) {
   if (!scanVideo || !scanModal || !scanModalTitle || !scanHint) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    addMessage("assistant", "Camera access is not supported in this browser.");
+    setScanError("Camera access is not supported in this browser.");
     return;
   }
-  if (!("BarcodeDetector" in window)) {
-    addMessage("assistant", "Barcode scanning is not supported in this browser. Try Image instead.");
-    return;
-  }
+  const canUseBarcodeDetector = "BarcodeDetector" in window;
 
   const formats = mode === "qr"
     ? ["qr_code"]
     : ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "qr_code", "pdf417", "data_matrix", "aztec"];
 
-  scanDetector = new BarcodeDetector({ formats });
   scanModalTitle.textContent = mode === "qr" ? "QR Scan" : "Barcode Scan";
   scanHint.textContent = "Align the code inside the frame.";
   scanModal.classList.remove("hidden");
@@ -199,32 +219,53 @@ async function startCameraScan(mode) {
     await scanVideo.play();
     scanActive = true;
   } catch (error) {
-    addMessage("assistant", "Camera permission denied or unavailable.");
+    setScanError("Camera permission denied or unavailable.");
     stopCameraScan();
     return;
   }
 
-  const scanLoop = async () => {
-    if (!scanActive || !scanDetector || !scanVideo) return;
-    try {
-      const results = await scanDetector.detect(scanVideo);
-      if (results && results.length) {
-        const value = results[0].rawValue || results[0].data || "";
-        handleScanValue(value, mode);
-        stopCameraScan();
-        return;
+  if (canUseBarcodeDetector) {
+    scanDetector = new BarcodeDetector({ formats });
+    const scanLoop = async () => {
+      if (!scanActive || !scanDetector || !scanVideo) return;
+      try {
+        const results = await scanDetector.detect(scanVideo);
+        if (results && results.length) {
+          const value = results[0].rawValue || results[0].data || "";
+          handleScanValue(value, mode);
+          stopCameraScan();
+          return;
+        }
+      } catch (error) {
+        // ignore and keep scanning
       }
-    } catch (error) {
-      // ignore and keep scanning
-    }
+      requestAnimationFrame(scanLoop);
+    };
     requestAnimationFrame(scanLoop);
-  };
-  requestAnimationFrame(scanLoop);
+    return;
+  }
+
+  try {
+    const reader = await getZxingReader();
+    const result = await reader.decodeFromVideoDevice(undefined, scanVideo, (res) => {
+      if (!res) return;
+      handleScanValue(res.getText(), mode);
+      stopCameraScan();
+    });
+    if (result && result.getText) {
+      handleScanValue(result.getText(), mode);
+      stopCameraScan();
+    }
+  } catch (error) {
+    setScanError("Barcode scanning is not supported in this browser. Try Image instead.");
+    stopCameraScan();
+  }
 }
 
 async function handleImageScan(file) {
   if (!file) return;
-  if ("BarcodeDetector" in window) {
+  const canUseBarcodeDetector = "BarcodeDetector" in window;
+  if (canUseBarcodeDetector) {
     try {
       const detector = new BarcodeDetector({
         formats: ["qr_code", "ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "itf", "pdf417", "data_matrix", "aztec"],
@@ -240,7 +281,18 @@ async function handleImageScan(file) {
       // fall through
     }
   }
-  addMessage("assistant", `Image received: ${file.name}`);
+  try {
+    const reader = await getZxingReader();
+    const bitmap = await createImageBitmap(file);
+    const result = await reader.decodeFromImage(undefined, bitmap);
+    if (result && result.getText) {
+      handleScanValue(result.getText(), "image");
+      return;
+    }
+  } catch (error) {
+    // ignore and fallback
+  }
+  setScanError(`Image received: ${file.name}`);
   track("scan.image.upload", { name: file.name, size: file.size });
 }
 
