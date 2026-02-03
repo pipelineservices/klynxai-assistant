@@ -360,11 +360,14 @@ export default function Home() {
   return (
     <div className="bg-surface text-slate-900">
       <div className="hero-glow" id="home" />
+      <div className="motion-grid" aria-hidden="true" />
       <header className="site-header">
         <div className="container flex items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="logo-frame">
-              <Image src={klynxLogo} alt="Klynx AI" width={46} height={46} priority />
+              <div className="logo-core">
+                <Image src={klynxLogo} alt="Klynx AI" width={42} height={42} priority />
+              </div>
             </div>
             <div>
               <p className="brand-name">
@@ -685,7 +688,9 @@ export default function Home() {
         <div className="container footer-grid">
           <div className="footer-brand">
             <div className="footer-logo">
-              <Image src={klynxLogo} alt="Klynx AI" width={54} height={54} />
+              <div className="logo-core">
+                <Image src={klynxLogo} alt="Klynx AI" width={48} height={48} />
+              </div>
             </div>
             <p className="footer-title">
               <span className="brand-gradient">Klynx AI</span>
