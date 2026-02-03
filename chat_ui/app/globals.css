@@ -2,7 +2,10 @@
 
 :root {
   /* Default Light Theme */
-  --klynx-bg-page: #ffffff;
+  --klynx-bg-page: radial-gradient(1200px 800px at 10% -10%, rgba(56, 189, 248, 0.18), transparent 60%),
+    radial-gradient(900px 700px at 90% 10%, rgba(34, 197, 94, 0.16), transparent 55%),
+    radial-gradient(900px 700px at 70% 90%, rgba(245, 158, 11, 0.18), transparent 60%),
+    linear-gradient(135deg, #05070f 0%, #0b1220 45%, #0a1a2f 100%);
   --klynx-bg-sidebar: #f9fafb;
   --klynx-border-panel: #e5e7eb;
   --klynx-text-primary: #111827;
@@ -19,7 +22,10 @@
 
 body.dark {
   /* Futuristic Dark Theme */
-  --klynx-bg-page: #0b1220; /* Deep blue-black */
+  --klynx-bg-page: radial-gradient(1200px 800px at 10% -10%, rgba(56, 189, 248, 0.18), transparent 60%),
+    radial-gradient(900px 700px at 90% 10%, rgba(34, 197, 94, 0.16), transparent 55%),
+    radial-gradient(900px 700px at 70% 90%, rgba(245, 158, 11, 0.18), transparent 60%),
+    linear-gradient(135deg, #05070f 0%, #0b1220 45%, #0a1a2f 100%);
   --klynx-bg-sidebar: #0f172a;
   --klynx-border-panel: #1f2937;
   --klynx-text-primary: #e5e7eb;

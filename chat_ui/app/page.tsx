@@ -657,6 +657,7 @@ export default function Page() {
 
       sidebarHover: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
       sourceBg: "var(--klynx-bg-btn)",
+      helpText: "rgba(226,232,240,0.7)",
     };
   }, [theme]);
 
@@ -1631,7 +1632,7 @@ export default function Page() {
                     style={{ height: 96, width: 96, objectFit: "contain", margin: "0 auto" }}
                   />
                 </div>
-                <div style={{ marginTop: 6, fontSize: 13, color: colors.muted }}>
+                <div style={{ marginTop: 6, fontSize: 13, color: colors.helpText }}>
                   Press Enter to send. Shift+Enter for new line. Attach files with +.
                 </div>
               </div>
