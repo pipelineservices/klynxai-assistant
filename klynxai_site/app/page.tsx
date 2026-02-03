@@ -3,6 +3,8 @@ import klynxLogo from "../public/klynx-logo.png";
 
 const navItems = [
   { label: "Home", href: "#home" },
+  { label: "Outcomes", href: "#outcomes" },
+  { label: "Why Klynx", href: "#why-klynx" },
   {
     label: "Solutions",
     href: "#solutions",
@@ -57,6 +59,52 @@ const heroSignals = [
   {
     title: "Secure Orchestration",
     description: "Governed execution across cloud, security, and infrastructure tools.",
+  },
+];
+
+const heroCapabilities = [
+  "Policy Intelligence",
+  "Agentic Orchestration",
+  "Audit Evidence",
+  "Risk Scoring",
+  "Operational Telemetry",
+  "Compliance Ready",
+];
+
+const outcomeMetrics = [
+  {
+    title: "Faster Approvals",
+    description: "Reduce decision lag with policy-gated routing and escalation.",
+  },
+  {
+    title: "Lower Risk Exposure",
+    description: "Enforce guardrails that keep automation aligned to policy.",
+  },
+  {
+    title: "Complete Traceability",
+    description: "Every action includes rationale, approvals, and evidence.",
+  },
+  {
+    title: "Cross-Team Alignment",
+    description: "Shared operational context for security, ops, and leadership.",
+  },
+];
+
+const whyItems = [
+  {
+    title: "Unified Control Plane",
+    description:
+      "A single governed layer for AI decisions, approvals, and execution across the enterprise.",
+  },
+  {
+    title: "Governance-First Expertise",
+    description:
+      "Deep experience in regulated environments where policy, audit, and oversight are mandatory.",
+  },
+  {
+    title: "Operational-Grade Outcomes",
+    description:
+      "Designed for real-world reliability with evidence-ready automation at scale.",
   },
 ];
 
@@ -261,6 +309,8 @@ const useCases = [
 
 const quickLinks = [
   "Home",
+  "Outcomes",
+  "Why Klynx",
   "Solutions",
   "Platform",
   "Technology",
@@ -334,6 +384,13 @@ export default function Home() {
                 across mission-critical systems. Every recommendation is explainable, approved,
                 and auditable.
               </p>
+              <div className="hero-capabilities">
+                {heroCapabilities.map((capability) => (
+                  <span key={capability} className="capability-chip">
+                    {capability}
+                  </span>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-4">
                 <a className="btn-primary" href="#solutions">Discover Solutions</a>
                 <a className="btn-outline" href="#contact">Book a Demo</a>
@@ -360,6 +417,46 @@ export default function Home() {
                 <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Governance Cockpit</p>
                 <h3>Live decision oversight with full evidence traceability.</h3>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section metrics" id="outcomes">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Outcomes</p>
+              <h2>Deliver measurable governance outcomes</h2>
+              <p>
+                Klynx helps teams move faster without losing oversight or accountability.
+              </p>
+            </div>
+            <div className="metric-grid">
+              {outcomeMetrics.map((metric) => (
+                <div key={metric.title} className="metric-card">
+                  <h3>{metric.title}</h3>
+                  <p>{metric.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-contrast" id="why-klynx">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Why Klynx</p>
+              <h2>Governance that scales with your mission</h2>
+              <p>
+                A control plane that keeps people in command, policies enforced, and evidence intact.
+              </p>
+            </div>
+            <div className="card-grid">
+              {whyItems.map((item) => (
+                <div key={item.title} className="card">
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
