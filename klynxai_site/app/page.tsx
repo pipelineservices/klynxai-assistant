@@ -379,8 +379,9 @@ export default function Home() {
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
             {navItems.map((item) => (
               <div key={item.href} className="nav-item">
-                <a href={item.href} className="nav-link">
+                <a href={item.href} className={`nav-link${item.children ? " has-children" : ""}`}>
                   {item.label}
+                  {item.children ? <span className="nav-caret">▾</span> : null}
                 </a>
                 {item.children && (
                   <div className="nav-dropdown">
@@ -394,14 +395,6 @@ export default function Home() {
               </div>
             ))}
           </nav>
-          <div className="hidden md:flex items-center gap-3">
-            <a className="btn-outline" href="#platform">
-              Explore Platform
-            </a>
-            <a className="btn-primary" href="#contact">
-              Request Demo
-            </a>
-          </div>
         </div>
       </header>
 

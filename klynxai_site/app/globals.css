@@ -219,6 +219,18 @@ body {
     transform: scaleX(1);
   }
 
+  .nav-link.has-children {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-caret {
+    font-size: 0.7rem;
+    color: var(--klynx-muted);
+    margin-top: 2px;
+  }
+
   .nav-item {
     position: relative;
   }
@@ -243,7 +255,7 @@ body {
     pointer-events: none;
     transform: translateY(6px);
     transition: opacity 0.2s ease, transform 0.2s ease;
-    z-index: 60;
+    z-index: 80;
   }
 
   .nav-dropdown-link {
