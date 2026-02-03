@@ -196,10 +196,13 @@ body {
     transition: color 0.2s ease;
     position: relative;
     letter-spacing: 0.02em;
+    font-family: var(--font-space), system-ui, sans-serif;
+    font-size: 0.98rem;
+    font-weight: 600;
   }
 
   .nav-link:hover {
-    color: var(--klynx-accent-strong);
+    color: #0ea5e9;
   }
 
   .nav-link::after {
@@ -226,8 +229,8 @@ body {
   }
 
   .nav-caret {
-    font-size: 0.7rem;
-    color: var(--klynx-muted);
+    font-size: 0.72rem;
+    color: #0ea5e9;
     margin-top: 2px;
   }
 
@@ -245,11 +248,11 @@ body {
     position: absolute;
     top: 120%;
     left: 0;
-    min-width: 220px;
+    min-width: 260px;
     background: var(--klynx-card);
     border: 1px solid var(--klynx-border);
     border-radius: 16px;
-    padding: 12px;
+    padding: 16px;
     box-shadow: 0 18px 40px rgba(12, 74, 110, 0.18);
     opacity: 0;
     pointer-events: none;
@@ -260,10 +263,12 @@ body {
 
   .nav-dropdown-link {
     display: block;
-    padding: 8px 10px;
+    padding: 10px 12px;
     border-radius: 10px;
     color: var(--klynx-muted);
-    font-size: 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: var(--font-space), system-ui, sans-serif;
   }
 
   .nav-dropdown-link:hover {
