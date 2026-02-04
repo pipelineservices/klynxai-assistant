@@ -285,24 +285,6 @@ body {
     max-width: 560px;
   }
 
-  .hero-capabilities {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 8px;
-  }
-
-  .capability-chip {
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--klynx-border);
-    background: rgba(255, 255, 255, 0.8);
-    font-size: 0.8rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--klynx-muted);
-  }
-
   .pill {
     display: inline-flex;
     align-items: center;
@@ -630,17 +612,6 @@ body {
     border-radius: 20px;
     padding: 18px 22px;
     box-shadow: var(--klynx-soft-shadow);
-  }
-
-  .metric-card h3 {
-    font-weight: 600;
-    margin-bottom: 8px;
-    font-family: var(--font-space), system-ui, sans-serif;
-  }
-
-  .metric-card p {
-    color: var(--klynx-muted);
-    line-height: 1.6;
   }
 
   @keyframes fade-up {
