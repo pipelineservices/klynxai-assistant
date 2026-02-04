@@ -263,7 +263,7 @@ body {
   }
 
   .hero {
-    padding-top: 96px;
+    padding: 84px 0 64px;
   }
 
   .hero-grid {
@@ -372,7 +372,7 @@ body {
   }
 
   .hero-visual-shell {
-    margin-top: -96px;
+    margin-top: -120px;
   }
 
   .hero-visual-shell {
@@ -388,11 +388,11 @@ body {
   .hero-panel {
     background: rgba(12, 21, 40, 0.86);
     border-radius: 24px;
-    padding: 20px;
+    padding: 18px;
     box-shadow: var(--klynx-shadow);
     border: 1px solid rgba(84, 121, 176, 0.25);
     display: grid;
-    gap: 14px;
+    gap: 12px;
     position: relative;
     overflow: hidden;
   }
@@ -422,7 +422,7 @@ body {
 
   .hero-panel-grid {
     display: grid;
-    gap: 12px;
+    gap: 10px;
   }
 
   .hero-panel-card {
@@ -432,7 +432,7 @@ body {
     align-items: start;
     background: rgba(12, 21, 40, 0.7);
     border: 1px solid rgba(84, 121, 176, 0.25);
-    padding: 12px;
+    padding: 10px 12px;
     border-radius: 18px;
   }
 
@@ -444,7 +444,8 @@ body {
 
   .hero-panel-card p {
     color: var(--klynx-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
   }
 
   .hero-panel-icon {
@@ -457,7 +458,7 @@ body {
   }
 
   .hero-panel-summary {
-    padding: 16px;
+    padding: 12px 14px;
     border-radius: 18px;
     background: linear-gradient(135deg, rgba(47, 209, 255, 0.12), rgba(51, 240, 194, 0.12));
     border: 1px solid rgba(47, 209, 255, 0.18);
@@ -845,5 +846,9 @@ body {
 
   .hero-title {
     max-width: none;
+  }
+
+  .hero {
+    padding: 64px 0 56px;
   }
 }
