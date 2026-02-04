@@ -368,7 +368,11 @@ body {
     align-self: center;
     max-width: 520px;
     margin-left: auto;
-    padding-top: 18px;
+    padding-top: 0;
+  }
+
+  .hero-visual-shell {
+    margin-top: -36px;
   }
 
   .hero-visual-shell {
@@ -832,6 +836,7 @@ body {
 
   .hero-visual-shell {
     padding: 20px;
+    margin-top: 0;
   }
 
   .hero-pill {
