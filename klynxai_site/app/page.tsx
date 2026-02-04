@@ -449,10 +449,6 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <div className="hero-logo-card">
-                <Image src={klynxLogo} alt="Klynx AI logo" width={300} height={300} priority />
-                <div className="hero-logo-glow" />
-              </div>
               <div className="hero-panel">
                 <div className="hero-panel-grid">
                   {heroSignals.map((signal) => (
