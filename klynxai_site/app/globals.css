@@ -263,7 +263,7 @@ body {
   }
 
   .hero {
-    padding-top: 120px;
+    padding-top: 108px;
   }
 
   .hero-grid {
@@ -276,7 +276,7 @@ body {
   .hero-copy {
     display: grid;
     gap: 24px;
-    padding-top: 12px;
+    padding-top: 4px;
     max-width: 560px;
   }
 
@@ -372,7 +372,7 @@ body {
   }
 
   .hero-visual-shell {
-    margin-top: -36px;
+    margin-top: -64px;
   }
 
   .hero-visual-shell {
