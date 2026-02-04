@@ -195,6 +195,87 @@ const solutionCards = [
   },
 ];
 
+const solutionDetails = [
+  {
+    id: "solution-dragon",
+    title: "Klynx Dragon - Governed Command",
+    subtitle: "Policy-gated command and approval for critical AI operations.",
+    description:
+      "Klynx Dragon provides a governed decision plane for high-stakes actions. It enforces role-based approvals, audit-grade evidence, and decision context across every step of AI-driven operations.",
+    benefits: [
+      "Decision registry with immutable audit",
+      "Policy gating for all actions",
+      "Human override with signed approvals",
+      "Enterprise-grade risk scoring",
+    ],
+  },
+  {
+    id: "solution-outage",
+    title: "Smart Outage Restoration",
+    subtitle: "Restore services faster with governed automation.",
+    description:
+      "Transform outage response into a rapid, data-driven workflow. Klynx AI correlates sensor data, incident signals, and operational context to recommend safe restoration paths under human approval.",
+    benefits: [
+      "Detect faults within minutes, not hours",
+      "Prioritize critical infrastructure first",
+      "Dispatch crews with verified action plans",
+      "Audit-ready evidence for every decision",
+    ],
+  },
+  {
+    id: "solution-retail",
+    title: "Retail Intelligence",
+    subtitle: "Govern pricing, inventory, and promotions with accountability.",
+    description:
+      "Klynx AI converts retail recommendations into governed decisions. Every price change or inventory action is vetted against policy thresholds and risk constraints.",
+    benefits: [
+      "Policy checks on margin and risk",
+      "Approval routing for high-impact changes",
+      "Decision queue and audit history",
+      "Executive visibility across retail actions",
+    ],
+  },
+  {
+    id: "solution-finance",
+    title: "Banking & Risk",
+    subtitle: "Regulated decision governance for financial services.",
+    description:
+      "Secure high-impact financial operations with transparent approvals, risk scoring, and evidence bundles aligned to regulatory oversight.",
+    benefits: [
+      "Dual approval for high-impact actions",
+      "Regulatory evidence bundles on demand",
+      "Risk scoring with override escalation",
+      "Decision accountability reporting",
+    ],
+  },
+  {
+    id: "solution-public",
+    title: "Public Safety & Government",
+    subtitle: "Mission-ready command for civic and national operations.",
+    description:
+      "Coordinate interagency decisions with human-in-command enforcement, cross-domain policy alignment, and resilience-ready automation.",
+    benefits: [
+      "Human-in-command enforcement for sensitive actions",
+      "Cross-agency policy coordination and logging",
+      "Evidence bundles for oversight and legal review",
+      "Resilience-ready automation with fail-safe controls",
+    ],
+  },
+  {
+    id: "solution-utilities",
+    title: "Utilities & Energy",
+    subtitle: "Grid intelligence with accountable automation and recovery.",
+    description:
+      "Align restoration, maintenance, and safety actions to policy guardrails with real-time evidence capture and approval workflows.",
+    benefits: [
+      "Policy-driven restoration sequencing",
+      "Automated damage assessment support",
+      "Crew dispatch with verified playbooks",
+      "Audit-ready compliance trails",
+    ],
+  },
+];
+
 const technologyItems = [
   {
     title: "Realtime Event Fabric",
@@ -498,7 +579,40 @@ export default function Home() {
                 <div key={item.id} id={item.id} className="solution-card">
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
-                  <span className="solution-link">Learn more →</span>
+                  <a className="solution-link" href={`#detail-${item.id}`}>
+                    Learn more →
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-contrast" id="solution-detail">
+          <div className="container">
+            <div className="section-heading">
+              <p className="eyebrow">Solution Detail</p>
+              <h2>Built for real-world governance requirements</h2>
+              <p>Each solution is tailored to industry-specific risk, compliance, and oversight needs.</p>
+            </div>
+            <div className="detail-stack">
+              {solutionDetails.map((item) => (
+                <div key={item.id} id={`detail-${item.id}`} className="detail-card">
+                  <div className="detail-grid">
+                    <div>
+                      <h3>{item.title}</h3>
+                      <p className="detail-subtitle">{item.subtitle}</p>
+                      <p className="detail-description">{item.description}</p>
+                    </div>
+                    <div className="detail-panel">
+                      <h4>Key Benefits</h4>
+                      <ul>
+                        {item.benefits.map((benefit) => (
+                          <li key={benefit}>{benefit}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
