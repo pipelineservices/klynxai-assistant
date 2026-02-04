@@ -45,6 +45,18 @@ const navItems = [
   { label: "Contact", href: "#contact" },
 ];
 
+const heroHighlights = [
+  "Policy-first AI control",
+  "Agentic operations with approvals",
+  "Audit-ready evidence trails",
+];
+
+const heroStats = [
+  { label: "Decision latency", value: "-42%" },
+  { label: "Audit prep time", value: "-68%" },
+  { label: "Risk exposure", value: "-37%" },
+];
+
 const heroSignals = [
   {
     title: "Policy Enforcement",
@@ -58,6 +70,14 @@ const heroSignals = [
     title: "Secure Orchestration",
     description: "Governed execution across cloud, security, and infrastructure tools.",
   },
+];
+
+const trustItems = [
+  "Utilities & Energy",
+  "Banking & Risk",
+  "Public Safety",
+  "Healthcare",
+  "Critical Infrastructure",
 ];
 
 const platformItems = [
@@ -277,29 +297,29 @@ const footerContact = {
 
 export default function Home() {
   return (
-    <div className="bg-surface text-slate-900">
+    <div className="bg-surface">
       <div className="hero-glow" id="home" />
       <header className="site-header">
-        <div className="container flex items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
+        <div className="container header-grid">
+          <div className="brand-lockup">
             <div className="logo-frame">
-              <Image src={klynxLogo} alt="Klynx AI" width={46} height={46} priority />
+              <Image src={klynxLogo} alt="Klynx AI" width={52} height={52} priority />
             </div>
             <div>
-              <p className="brand-name">
-                <span className="brand-gradient">Klynx AI</span>
-              </p>
-              <p className="text-xs uppercase tracking-[0.32em] text-slate-500">Governed AI Systems</p>
+              <p className="brand-name">Klynx AI</p>
+              <p className="brand-tagline">Governed AI Systems</p>
             </div>
           </div>
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
+          <nav className="site-nav">
             {navItems.map((item) => (
               <div key={item.href} className="nav-item">
-                <a href={item.href} className="nav-link">
+                <a href={item.href} className={`nav-link${item.children ? " has-children" : ""}`}>
                   {item.label}
+                  {item.children ? <span className="nav-caret">▾</span> : null}
                 </a>
                 {item.children && (
                   <div className="nav-dropdown">
+                    <p className="nav-eyebrow">{item.label}</p>
                     {item.children.map((child) => (
                       <a key={child.href} href={child.href} className="nav-dropdown-link">
                         {child.label}
@@ -310,13 +330,9 @@ export default function Home() {
               </div>
             ))}
           </nav>
-          <div className="hidden md:flex items-center gap-3">
-            <a className="btn-outline" href="#platform">
-              Explore Platform
-            </a>
-            <a className="btn-primary" href="#contact">
-              Request Demo
-            </a>
+          <div className="header-actions">
+            <a className="btn-ghost" href="#platform">Explore Platform</a>
+            <a className="btn-primary" href="#contact">Request Demo</a>
           </div>
         </div>
       </header>
@@ -324,42 +340,66 @@ export default function Home() {
       <main>
         <section className="section hero" id="home">
           <div className="container hero-grid">
-            <div className="space-y-6">
+            <div className="hero-copy">
               <div className="pill">Enterprise Control Plane</div>
               <h1 className="hero-title">
-                The control plane for governed AI and autonomous operations
+                Governed AI for autonomous operations that stay accountable.
               </h1>
               <p className="hero-subtitle">
-                Klynx AI unifies policy governance, agentic workflows, and real-time intelligence
-                across mission-critical systems. Every recommendation is explainable, approved,
-                and auditable.
+                Klynx AI orchestrates policy, approvals, and evidence across mission-critical systems.
+                Every recommendation remains explainable, human-approved, and audit-ready.
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="hero-highlight">
+                {heroHighlights.map((item) => (
+                  <span key={item} className="highlight-chip">{item}</span>
+                ))}
+              </div>
+              <div className="hero-actions">
                 <a className="btn-primary" href="#solutions">Discover Solutions</a>
-                <a className="btn-outline" href="#contact">Book a Demo</a>
+                <a className="btn-ghost" href="#contact">Book a Demo</a>
               </div>
-              <div className="hero-trust">
-                <span>Trusted</span>
-                <span>Auditable</span>
-                <span>Mission-Ready</span>
-              </div>
-            </div>
-            <div className="hero-panel">
-              <div className="hero-panel-grid">
-                {heroSignals.map((signal) => (
-                  <div key={signal.title} className="hero-panel-card">
-                    <div className="hero-panel-icon" />
-                    <div>
-                      <h3>{signal.title}</h3>
-                      <p>{signal.description}</p>
-                    </div>
+              <div className="hero-stats">
+                {heroStats.map((stat) => (
+                  <div key={stat.label} className="hero-stat">
+                    <p className="stat-value">{stat.value}</p>
+                    <p className="stat-label">{stat.label}</p>
                   </div>
                 ))}
               </div>
-              <div className="hero-panel-summary">
-                <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Governance Cockpit</p>
-                <h3>Live decision oversight with full evidence traceability.</h3>
+            </div>
+            <div className="hero-visual">
+              <div className="hero-logo-card">
+                <Image src={klynxLogo} alt="Klynx AI logo" width={300} height={300} priority />
+                <div className="hero-logo-glow" />
               </div>
+              <div className="hero-panel">
+                <div className="hero-panel-grid">
+                  {heroSignals.map((signal) => (
+                    <div key={signal.title} className="hero-panel-card">
+                      <div className="hero-panel-icon" />
+                      <div>
+                        <h3>{signal.title}</h3>
+                        <p>{signal.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hero-panel-summary">
+                  <p className="text-sm uppercase tracking-[0.28em]">Governance Cockpit</p>
+                  <h3>Live decision oversight with full evidence traceability.</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section trust-strip" id="trusted">
+          <div className="container trust-grid">
+            <p className="trust-title">Trusted by regulated teams</p>
+            <div className="trust-items">
+              {trustItems.map((item) => (
+                <span key={item} className="trust-chip">{item}</span>
+              ))}
             </div>
           </div>
         </section>

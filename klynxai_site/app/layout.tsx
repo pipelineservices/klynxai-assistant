@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Sora } from "next/font/google";
+import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const space = Space_Grotesk({ subsets: ["latin"], variable: "--font-space" });
-const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
+const manrope = Manrope({ subsets: ["latin"], variable: "--font-body" });
 
 export const metadata: Metadata = {
   title: "Klynx AI",
@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${space.variable} ${sora.variable}`}>
-      <body className="min-h-screen bg-white text-slate-900 font-[var(--font-sora)]">
+    <html lang="en" className={`${space.variable} ${manrope.variable}`}>
+      <body className="min-h-screen bg-slate-950 text-white font-[var(--font-body)]">
         {children}
       </body>
     </html>
