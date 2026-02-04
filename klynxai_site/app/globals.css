@@ -385,6 +385,23 @@ body {
     overflow: hidden;
   }
 
+  .hero-logo-badge {
+    width: 96px;
+    height: 96px;
+    border-radius: 24px;
+    background: rgba(9, 18, 36, 0.8);
+    border: 1px solid rgba(84, 121, 176, 0.35);
+    box-shadow: var(--klynx-soft-shadow);
+    display: grid;
+    place-items: center;
+    margin: 0 auto 18px;
+  }
+
+  .hero-logo-badge img {
+    width: 72px;
+    height: 72px;
+  }
+
   .hero-panel {
     background: rgba(12, 21, 40, 0.86);
     border-radius: 24px;
