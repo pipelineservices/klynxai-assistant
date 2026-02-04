@@ -422,7 +422,7 @@ export default function Home() {
         <section className="section hero" id="home">
           <div className="container hero-grid">
             <div className="hero-copy">
-              <div className="pill">Enterprise Control Plane</div>
+              <div className="pill hero-pill">Enterprise Control Plane</div>
               <h1 className="hero-title">
                 Governed AI for autonomous operations that stay accountable.
               </h1>
@@ -449,22 +449,25 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <div className="hero-panel">
-                <div className="hero-panel-grid">
-                  {heroSignals.map((signal) => (
-                    <div key={signal.title} className="hero-panel-card">
-                      <div className="hero-panel-icon" />
-                      <div>
-                        <h3>{signal.title}</h3>
-                        <p>{signal.description}</p>
+              <div className="hero-visual-shell">
+                <div className="hero-panel">
+                  <div className="hero-panel-grid">
+                    {heroSignals.map((signal) => (
+                      <div key={signal.title} className="hero-panel-card">
+                        <div className="hero-panel-icon" />
+                        <div>
+                          <h3>{signal.title}</h3>
+                          <p>{signal.description}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <div className="hero-panel-summary">
+                    <p className="text-sm uppercase tracking-[0.28em]">Governance Cockpit</p>
+                    <h3>Live decision oversight with full evidence traceability.</h3>
+                  </div>
                 </div>
-                <div className="hero-panel-summary">
-                  <p className="text-sm uppercase tracking-[0.28em]">Governance Cockpit</p>
-                  <h3>Live decision oversight with full evidence traceability.</h3>
-                </div>
+                <div className="hero-visual-overlay" aria-hidden="true" />
               </div>
             </div>
           </div>
