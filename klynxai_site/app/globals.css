@@ -526,33 +526,31 @@ body {
 
   .hero-copy {
     display: grid;
-    gap: 24px;
+    gap: 20px;
     padding-top: 0;
-    max-width: 560px;
+    max-width: 540px;
   }
 
   .hero-super-kicker {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.25em;
     color: var(--klynx-accent);
-    font-weight: 700;
-    animation: slideInLeft 0.6s ease-out;
+    font-weight: 600;
   }
 
   .hero-title-large {
     font-family: var(--font-space), system-ui, sans-serif;
-    font-size: clamp(3.2rem, 5.5vw, 5.4rem);
-    line-height: 1.05;
-    letter-spacing: -0.025em;
-    font-weight: 800;
-    max-width: 18ch;
-    background: linear-gradient(135deg, #ffffff 0%, #2fd1ff 50%, #33f0c2 100%);
+    font-size: clamp(2.2rem, 3.5vw, 3rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    max-width: 20ch;
+    background: linear-gradient(135deg, #ffffff 0%, #2fd1ff 60%, #33f0c2 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    margin: 8px 0 12px;
-    animation: fadeInUp 0.8s ease-out 0.2s both;
+    margin: 6px 0 10px;
   }
 
   .hero-title {
@@ -578,26 +576,24 @@ body {
   }
 
   .hero-subtitle {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--klynx-muted);
-    max-width: 560px;
-    line-height: 1.7;
-    animation: fadeInUp 0.8s ease-out 0.4s both;
+    max-width: 540px;
+    line-height: 1.65;
   }
 
   .hero-value-props {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 8px;
-    animation: fadeInUp 0.8s ease-out 0.6s both;
+    gap: 10px;
+    margin-top: 16px;
   }
 
   .value-prop-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 1rem;
+    gap: 10px;
+    font-size: 0.92rem;
     color: var(--klynx-text);
     font-weight: 500;
   }
@@ -606,13 +602,13 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, rgba(47, 209, 255, 0.25), rgba(51, 240, 194, 0.2));
-    border: 1px solid var(--klynx-accent);
+    background: linear-gradient(135deg, rgba(47, 209, 255, 0.2), rgba(51, 240, 194, 0.15));
+    border: 1px solid rgba(47, 209, 255, 0.5);
     color: var(--klynx-accent);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     flex-shrink: 0;
   }

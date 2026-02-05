@@ -240,22 +240,20 @@ export default function Home() {
         <section className="section hero" id="home">
           <div className="container hero-grid">
             <div className="hero-copy">
-              <p className="hero-super-kicker">AI Governance & Control Plane</p>
-              <h1 className="hero-title-large">Empowering the Future of Responsible AI</h1>
               <p className="hero-kicker">Dragon by Klynx AI</p>
+              <h1 className="hero-title">Governed AI Decision-Making for the Real World</h1>
               <p className="hero-subtitle">
-                The enterprise control plane that brings accountability, transparency, and human oversight
-                to every AI decision — from recommendations to automated actions. Dragon ensures your AI systems
-                operate within policy boundaries while maintaining the speed and intelligence you need.
+                Dragon is the control plane for AI-powered decisions — enforcing policy, approvals,
+                auditability, and accountability across every AI action before it impacts real systems.
               </p>
               <div className="hero-value-props">
                 <div className="value-prop-item">
                   <span className="value-prop-icon">✓</span>
-                  <span>Policy-Enforced AI Actions</span>
+                  <span>Policy-First Enforcement</span>
                 </div>
                 <div className="value-prop-item">
                   <span className="value-prop-icon">✓</span>
-                  <span>Human-in-the-Loop Workflows</span>
+                  <span>Human-in-the-Loop Approvals</span>
                 </div>
                 <div className="value-prop-item">
                   <span className="value-prop-icon">✓</span>
