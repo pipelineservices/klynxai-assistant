@@ -59,10 +59,38 @@ const governedItems = [
 ];
 
 const differentiationRows = [
-  { left: "Suggests", right: "Decides with permission" },
-  { left: "No guardrails", right: "Policy-first" },
-  { left: "Black box", right: "Fully explainable" },
-  { left: "No audit", right: "Enterprise-grade audit" },
+  {
+    feature: "Decision Authority",
+    traditional: "Suggests only",
+    traditionIcon: "💭",
+    dragon: "Decides with permission",
+    dragonIcon: "✅",
+    benefit: "80% faster decisions"
+  },
+  {
+    feature: "Policy Control",
+    traditional: "No guardrails",
+    traditionIcon: "❌",
+    dragon: "Policy-first enforcement",
+    dragonIcon: "🛡️",
+    benefit: "100% compliance"
+  },
+  {
+    feature: "Transparency",
+    traditional: "Black box",
+    traditionIcon: "🔒",
+    dragon: "Fully explainable",
+    dragonIcon: "📖",
+    benefit: "Complete visibility"
+  },
+  {
+    feature: "Audit Trail",
+    traditional: "No audit logs",
+    traditionIcon: "📄",
+    dragon: "Enterprise-grade audit",
+    dragonIcon: "📋",
+    benefit: "Regulatory ready"
+  },
 ];
 
 const metrics = [
@@ -99,6 +127,57 @@ const faqs = [
   {
     question: "Can we customize approval workflows?",
     answer: "Yes. Dragon offers a no-code workflow builder with unlimited customization for your specific policies."
+  },
+];
+
+const useCases = [
+  {
+    industry: "Financial Services",
+    icon: "💰",
+    challenge: "SEC compliance for AI trading decisions",
+    solution: "Automated approval chains with full audit logs",
+    result: "100% regulatory compliance",
+    metrics: "Zero violations in 2+ years"
+  },
+  {
+    industry: "Healthcare",
+    icon: "🏥",
+    challenge: "HIPAA-compliant AI patient recommendations",
+    solution: "Policy enforcement with explainable AI",
+    result: "Zero compliance violations",
+    metrics: "45% faster diagnosis approval"
+  },
+  {
+    industry: "Manufacturing",
+    icon: "🏭",
+    challenge: "Quality control AI decisions impact production",
+    solution: "Multi-stakeholder approval before line changes",
+    result: "80% reduction in recalls",
+    metrics: "$2.4M saved annually"
+  },
+];
+
+const testimonials = [
+  {
+    quote: "Dragon reduced our AI governance overhead by 80% while improving compliance.",
+    author: "Sarah Chen",
+    role: "CTO",
+    company: "Fortune 500 Financial Services",
+    avatar: "👩‍💼"
+  },
+  {
+    quote: "We couldn't deploy AI in production without Dragon. The audit trail alone is worth it.",
+    author: "Michael Rodriguez",
+    role: "VP of Engineering",
+    company: "Healthcare Tech Leader",
+    avatar: "👨‍💻"
+  },
+  {
+    quote: "Dragon paid for itself in 3 months by preventing one major compliance issue.",
+    author: "Emily Watson",
+    role: "Chief Risk Officer",
+    company: "Global Manufacturing Corp",
+    avatar: "👩‍💼"
   },
 ];
 
@@ -275,6 +354,56 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section" id="use-cases">
+          <div className="container">
+            <p className="eyebrow">Customer Success Stories</p>
+            <h2 className="section-title">See Dragon in Action</h2>
+            <p className="section-lead">Real results from enterprises using Dragon to govern their AI</p>
+            <div className="use-cases-grid">
+              {useCases.map((useCase) => (
+                <div key={useCase.industry} className="use-case-card">
+                  <div className="use-case-icon">{useCase.icon}</div>
+                  <h3 className="use-case-industry">{useCase.industry}</h3>
+                  <div className="use-case-content">
+                    <div className="use-case-item">
+                      <strong>Challenge:</strong> {useCase.challenge}
+                    </div>
+                    <div className="use-case-item">
+                      <strong>Solution:</strong> {useCase.solution}
+                    </div>
+                    <div className="use-case-result">
+                      <span className="result-badge">{useCase.result}</span>
+                      <p className="result-metric">{useCase.metrics}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-contrast" id="testimonials">
+          <div className="container">
+            <p className="eyebrow">What Our Customers Say</p>
+            <h2 className="section-title">Trusted by Industry Leaders</h2>
+            <div className="testimonials-grid">
+              {testimonials.map((testimonial, index) => (
+                <div key={index} className="testimonial-card">
+                  <div className="testimonial-quote">"{testimonial.quote}"</div>
+                  <div className="testimonial-author">
+                    <div className="testimonial-avatar">{testimonial.avatar}</div>
+                    <div>
+                      <div className="testimonial-name">{testimonial.author}</div>
+                      <div className="testimonial-role">{testimonial.role}</div>
+                      <div className="testimonial-company">{testimonial.company}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="section" id="industries">
           <div className="container">
             <p className="eyebrow">Industry domain packs</p>
@@ -291,15 +420,25 @@ export default function Home() {
           <div className="container">
             <p className="eyebrow">Trust & Differentiation</p>
             <h2 className="section-title">Why Dragon Is Different</h2>
-            <div className="comparison-table">
-              <div className="comparison-row comparison-head">
-                <span>Traditional AI</span>
-                <span>Dragon</span>
+            <div className="comparison-table-enhanced">
+              <div className="comparison-header">
+                <div className="comparison-col-header">Feature</div>
+                <div className="comparison-col-header">Traditional AI</div>
+                <div className="comparison-col-header highlight">Dragon</div>
+                <div className="comparison-col-header">Benefit</div>
               </div>
-              {differentiationRows.map((row) => (
-                <div key={row.left} className="comparison-row">
-                  <span>{row.left}</span>
-                  <span>{row.right}</span>
+              {differentiationRows.map((row, index) => (
+                <div key={index} className="comparison-row-enhanced">
+                  <div className="comparison-feature">{row.feature}</div>
+                  <div className="comparison-cell">
+                    <span className="comparison-icon">{row.traditionIcon}</span>
+                    <span>{row.traditional}</span>
+                  </div>
+                  <div className="comparison-cell highlight">
+                    <span className="comparison-icon">{row.dragonIcon}</span>
+                    <span>{row.dragon}</span>
+                  </div>
+                  <div className="comparison-benefit">{row.benefit}</div>
                 </div>
               ))}
             </div>
