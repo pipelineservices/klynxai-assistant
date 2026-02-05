@@ -395,7 +395,7 @@ body {
   }
 
   .hero {
-    padding: 64px 0 40px;
+    padding: 32px 0 24px;
   }
 
   /* Metrics Section */
@@ -526,7 +526,7 @@ body {
 
   .hero-copy {
     display: grid;
-    gap: 20px;
+    gap: 16px;
     padding-top: 0;
     max-width: 540px;
   }
@@ -563,7 +563,7 @@ body {
   }
 
   .hero-kicker {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: rgba(237, 243, 255, 0.7);
@@ -576,17 +576,17 @@ body {
   }
 
   .hero-subtitle {
-    font-size: 1.05rem;
+    font-size: 1rem;
     color: var(--klynx-muted);
     max-width: 540px;
-    line-height: 1.65;
+    line-height: 1.6;
   }
 
   .hero-value-props {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-top: 16px;
+    gap: 8px;
+    margin-top: 12px;
   }
 
   .value-prop-item {
@@ -2313,6 +2313,75 @@ body {
   transform: scale(1.05);
 }
 
+/* Contact Form Section */
+.contact-form-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.contact-form-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.contact-form {
+  background: rgba(15, 27, 51, 0.6);
+  border: 1px solid rgba(47, 209, 255, 0.2);
+  border-radius: 20px;
+  padding: 48px;
+  box-shadow: var(--klynx-shadow);
+}
+
+.contact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--klynx-text);
+  letter-spacing: 0.01em;
+}
+
+.form-group input,
+.form-group textarea {
+  background: rgba(10, 18, 38, 0.8);
+  border: 1px solid rgba(47, 209, 255, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  color: var(--klynx-text);
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--klynx-accent);
+  background: rgba(10, 18, 38, 0.95);
+  box-shadow: 0 0 0 3px rgba(47, 209, 255, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.contact-form button[type="submit"] {
+  margin-top: 16px;
+  width: 100%;
+}
+
 @media (max-width: 768px) {
   .contact-widget {
     bottom: 16px;
@@ -2323,5 +2392,14 @@ body {
 
   .hero-title-large {
     font-size: clamp(2.4rem, 7vw, 3.8rem);
+  }
+
+  .contact-form {
+    padding: 32px 24px;
+  }
+
+  .contact-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 }

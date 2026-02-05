@@ -602,6 +602,43 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section section-contrast" id="contact">
+          <div className="container">
+            <div className="contact-form-wrapper">
+              <div className="contact-form-header">
+                <p className="eyebrow">Get Started</p>
+                <h2 className="section-title">Let's Talk to Understand Your AI Governance Goals</h2>
+                <p className="section-lead">
+                  Stay informed on how Dragon can transform your AI operations with policy enforcement,
+                  human oversight, and complete auditability.
+                </p>
+              </div>
+
+              <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
+                <div className="contact-form-grid">
+                  <div className="form-group">
+                    <label htmlFor="name">Your name</label>
+                    <input type="text" id="name" name="name" required />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="email">Your email</label>
+                    <input type="email" id="email" name="email" required />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="subject">Subject</label>
+                    <input type="text" id="subject" name="subject" required />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="message">Your message</label>
+                  <textarea id="message" name="message" rows={6} required></textarea>
+                </div>
+                <button type="submit" className="btn-primary btn-large">Submit</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
         <section className="section cta" id="cta">
           <div className="container cta-card">
             <div>
