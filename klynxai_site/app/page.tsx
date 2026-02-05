@@ -264,6 +264,7 @@ export default function Home() {
           <div>
             <p className="footer-title">Contact</p>
             <p className="footer-text">support@klynxai.com</p>
+            <p className="footer-text">+1 (252) 263-7729</p>
           </div>
           <div>
             <p className="footer-title">Actions</p>
