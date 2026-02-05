@@ -1177,9 +1177,9 @@ body {
 
   .footer-grid {
     display: grid;
-    gap: 40px;
-    grid-template-columns: 1.6fr repeat(3, minmax(160px, 1fr)) 1.1fr;
-    margin-bottom: 36px;
+    gap: 48px;
+    grid-template-columns: 2fr repeat(4, 1fr);
+    margin-bottom: 40px;
     align-items: start;
     position: relative;
     z-index: 1;
@@ -1187,7 +1187,20 @@ body {
 
   .footer-brand {
     display: grid;
-    gap: 16px;
+    gap: 12px;
+    max-width: 320px;
+  }
+
+  .footer-brand-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #ffffff;
+    margin-top: 8px;
+  }
+
+  .footer-column {
+    display: grid;
+    gap: 12px;
   }
 
   .footer-logo {
@@ -1226,10 +1239,11 @@ body {
   }
 
   .footer-text {
-    color: rgba(230, 244, 247, 0.85);
+    color: rgba(230, 244, 247, 0.75);
     font-size: 0.9rem;
     line-height: 1.7;
     transition: color 0.3s ease;
+    margin-bottom: 6px;
   }
 
   .footer-text:hover {
@@ -1238,29 +1252,65 @@ body {
 
   .site-footer ul {
     display: grid;
-    gap: 10px;
-    color: rgba(230, 244, 247, 0.78);
+    gap: 12px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .site-footer ul li {
+    transition: transform 0.2s ease;
+  }
+
+  .site-footer ul li:hover {
+    transform: translateX(4px);
+  }
+
+  .site-footer ul li a {
+    color: rgba(230, 244, 247, 0.75);
+    text-decoration: none;
     font-size: 0.92rem;
-    line-height: 1.5;
+    line-height: 1.6;
+    transition: color 0.3s ease;
+  }
+
+  .site-footer ul li a:hover {
+    color: rgba(47, 209, 255, 0.95);
+  }
+
+  .footer-contact {
+    display: grid;
+    gap: 8px;
   }
 
   .footer-socials {
     display: flex;
-    gap: 10px;
-    margin-top: 12px;
+    gap: 12px;
+    margin-top: 16px;
   }
 
-  .social-chip {
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    border: 1px solid rgba(230, 244, 247, 0.35);
+  .social-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(47, 209, 255, 0.3);
     display: grid;
     place-items: center;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: #ffffff;
-    background: rgba(12, 21, 40, 0.6);
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: rgba(47, 209, 255, 0.9);
+    background: rgba(15, 27, 51, 0.6);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .social-icon:hover {
+    background: rgba(47, 209, 255, 0.15);
+    border-color: rgba(47, 209, 255, 0.6);
+    color: #2fd1ff;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(47, 209, 255, 0.25);
   }
 
   .footer-bottom {
@@ -1268,14 +1318,11 @@ body {
     flex-wrap: wrap;
     gap: 16px;
     justify-content: space-between;
+    align-items: center;
     font-size: 0.88rem;
-    color: rgba(230, 244, 247, 0.75);
-    border-top: 1px solid transparent;
-    border-image: linear-gradient(90deg,
-      rgba(47, 209, 255, 0.1),
-      rgba(51, 240, 194, 0.15) 50%,
-      rgba(47, 209, 255, 0.1)) 1;
-    padding: 20px 0 28px;
+    color: rgba(230, 244, 247, 0.65);
+    border-top: 1px solid rgba(47, 209, 255, 0.15);
+    padding: 24px 0 32px;
     position: relative;
     z-index: 1;
   }
@@ -1284,7 +1331,13 @@ body {
     transition: color 0.3s ease;
   }
 
-  .footer-bottom span:hover {
+  .footer-bottom a {
+    color: rgba(230, 244, 247, 0.75);
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+
+  .footer-bottom a:hover {
     color: rgba(47, 209, 255, 0.95);
   }
 }

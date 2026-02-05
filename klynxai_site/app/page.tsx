@@ -256,28 +256,55 @@ export default function Home() {
             <div className="footer-logo">
               <Image src={klynxLogo} alt="Klynx AI" width={54} height={54} />
             </div>
-            <p className="footer-title">Klynx AI</p>
+            <p className="footer-brand-name">Klynx AI</p>
             <p className="footer-text">
               Dragon is the control plane for governed AI decisions in regulated and high-impact environments.
             </p>
           </div>
-          <div>
-            <p className="footer-title">Contact</p>
-            <p className="footer-text">support@klynxai.com</p>
-            <p className="footer-text">+1 (252) 263-7729</p>
+          <div className="footer-column">
+            <p className="footer-title">Quick Links</p>
+            <ul>
+              <li><a href="#home">Home</a></li>
+              <li><a href="#solution">Solution</a></li>
+              <li><a href="#how-it-works">How It Works</a></li>
+            </ul>
           </div>
-          <div>
+          <div className="footer-column">
+            <p className="footer-title">Resources</p>
+            <ul>
+              <li><a href="#capabilities">Core Capabilities</a></li>
+              <li><a href="#industries">Industry Packs</a></li>
+              <li><a href="#trust">Trust & Security</a></li>
+            </ul>
+          </div>
+          <div className="footer-column">
             <p className="footer-title">Actions</p>
             <ul>
-              <li>Request a Demo</li>
-              <li>See How Governance Works</li>
-              <li>Book Enterprise Demo</li>
+              <li><a href="#cta">Request a Demo</a></li>
+              <li><a href="#how-it-works">See How Governance Works</a></li>
+              <li><a href="#cta">Book Enterprise Demo</a></li>
             </ul>
+          </div>
+          <div className="footer-column footer-contact">
+            <p className="footer-title">Contact Us</p>
+            <p className="footer-text">support@klynxai.com</p>
+            <p className="footer-text">+1 (252) 263-7729</p>
+            <div className="footer-socials">
+              <a href="#" className="social-icon" aria-label="LinkedIn">
+                <span>in</span>
+              </a>
+              <a href="#" className="social-icon" aria-label="Facebook">
+                <span>f</span>
+              </a>
+              <a href="#" className="social-icon" aria-label="X (Twitter)">
+                <span>𝕏</span>
+              </a>
+            </div>
           </div>
         </div>
         <div className="container footer-bottom">
           <span>© 2026 Klynx AI. All rights reserved.</span>
-          <span>Privacy Policy | Terms and Conditions</span>
+          <span><a href="#privacy">Privacy Policy</a> | <a href="#terms">Terms and Conditions</a></span>
         </div>
       </footer>
     </div>
