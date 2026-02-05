@@ -7,7 +7,7 @@ const navItems = [
   { label: "Solution", href: "#solution" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Core Capabilities", href: "#capabilities" },
-  { label: "Industry Solutions", href: "#industries" },
+  { label: "Industry domain packs", href: "#industries" },
   { label: "Trust & Differentiation", href: "#trust" },
   { label: "CTA", href: "#cta" },
 ];
@@ -200,8 +200,8 @@ export default function Home() {
 
         <section className="section" id="industries">
           <div className="container">
-            <p className="eyebrow">Industry Solutions</p>
-            <h2 className="section-title">What Dragon Governs</h2>
+            <p className="eyebrow">Industry domain packs</p>
+            <h2 className="section-title">Industry domain packs</h2>
             <ul className="bullet-list grid-list">
               {governedItems.map((item) => (
                 <li key={`${item}-industry`}>{item}</li>
@@ -242,6 +242,36 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      <footer className="site-footer">
+        <div className="container footer-grid">
+          <div className="footer-brand">
+            <div className="footer-logo">
+              <Image src={klynxLogo} alt="Klynx AI" width={54} height={54} />
+            </div>
+            <p className="footer-title">Klynx AI</p>
+            <p className="footer-text">
+              Dragon is the control plane for governed AI decisions in regulated and high-impact environments.
+            </p>
+          </div>
+          <div>
+            <p className="footer-title">Contact</p>
+            <p className="footer-text">support@klynxai.com</p>
+          </div>
+          <div>
+            <p className="footer-title">Actions</p>
+            <ul>
+              <li>Request a Demo</li>
+              <li>See How Governance Works</li>
+              <li>Book Enterprise Demo</li>
+            </ul>
+          </div>
+        </div>
+        <div className="container footer-bottom">
+          <span>© 2026 Klynx AI. All rights reserved.</span>
+          <span>Privacy Policy | Terms and Conditions</span>
+        </div>
+      </footer>
     </div>
   );
 }
