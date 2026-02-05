@@ -53,12 +53,14 @@ const solutionSteps = [
 ];
 
 const governedItems = [
-  "AI recommendations",
-  "Production changes",
-  "Incident actions",
-  "CI/CD fixes",
-  "Financial or pricing decisions",
-  "Data access & model behavior",
+  "AI-Powered Recommendations",
+  "Production Changes & Deployments",
+  "Incident Response & Resolution",
+  "CI/CD Orchestration & Automation",
+  "Financial or Pricing Decisions",
+  "Data Access & Model Behavior",
+  "Multi-Domain Governance (DevOps, SRE, Security)",
+  "Conversational AI & Chat UI Interactions",
 ];
 
 const differentiationRows = [
@@ -195,6 +197,7 @@ export default function Home() {
   const [aiDecisions, setAiDecisions] = useState(100);
   const [reviewTime, setReviewTime] = useState(2);
   const [hourlyRate, setHourlyRate] = useState(150);
+  const [showContactWidget, setShowContactWidget] = useState(true);
 
   // Calculate ROI
   const decisionsPerYear = aiDecisions * 365;
@@ -237,16 +240,31 @@ export default function Home() {
         <section className="section hero" id="home">
           <div className="container hero-grid">
             <div className="hero-copy">
+              <p className="hero-super-kicker">AI Governance & Control Plane</p>
+              <h1 className="hero-title-large">Empowering the Future of Responsible AI</h1>
               <p className="hero-kicker">Dragon by Klynx AI</p>
-              <h1 className="hero-title">Governed AI Decision-Making for the Real World</h1>
               <p className="hero-subtitle">
-                Dragon is the control plane for AI-powered decisions — enforcing policy, approvals,
-                auditability, and accountability across every AI action before it impacts real systems.
+                The enterprise control plane that brings accountability, transparency, and human oversight
+                to every AI decision — from recommendations to automated actions. Dragon ensures your AI systems
+                operate within policy boundaries while maintaining the speed and intelligence you need.
               </p>
-              <p className="hero-callout">AI that acts — only when allowed.</p>
+              <div className="hero-value-props">
+                <div className="value-prop-item">
+                  <span className="value-prop-icon">✓</span>
+                  <span>Policy-Enforced AI Actions</span>
+                </div>
+                <div className="value-prop-item">
+                  <span className="value-prop-icon">✓</span>
+                  <span>Human-in-the-Loop Workflows</span>
+                </div>
+                <div className="value-prop-item">
+                  <span className="value-prop-icon">✓</span>
+                  <span>Complete Audit Trails</span>
+                </div>
+              </div>
               <div className="hero-actions">
                 <a className="btn-primary" href="#cta">Request a Demo</a>
-                <a className="btn-ghost" href="#how-it-works">See How Governance Works</a>
+                <a className="btn-ghost" href="#how-it-works">See How It Works</a>
               </div>
             </div>
             <div className="hero-visual">
@@ -658,6 +676,38 @@ export default function Home() {
           <span><a href="#privacy">Privacy Policy</a> | <a href="#terms">Terms and Conditions</a></span>
         </div>
       </footer>
+
+      {/* Floating Contact Widget */}
+      <div className={`contact-widget ${!showContactWidget ? 'hidden' : ''}`}>
+        <button
+          className="contact-widget-close"
+          onClick={() => setShowContactWidget(false)}
+          aria-label="Close contact widget"
+        >
+          ×
+        </button>
+        <div className="contact-widget-header">
+          <div className="contact-widget-icon">💬</div>
+          <div>
+            <div className="contact-widget-title">Get In Touch</div>
+            <div className="contact-widget-subtitle">We're here to help</div>
+          </div>
+        </div>
+        <div className="contact-widget-items">
+          <a href="mailto:support@klynxai.com" className="contact-widget-item">
+            <span className="contact-widget-item-icon">📧</span>
+            <span className="contact-widget-item-text">support@klynxai.com</span>
+          </a>
+          <a href="tel:+12522637729" className="contact-widget-item">
+            <span className="contact-widget-item-icon">📞</span>
+            <span className="contact-widget-item-text">+1 (252) 263-7729</span>
+          </a>
+          <a href="#cta" className="contact-widget-item">
+            <span className="contact-widget-item-icon">🚀</span>
+            <span className="contact-widget-item-text">Schedule a Demo</span>
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

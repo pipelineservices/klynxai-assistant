@@ -531,6 +531,30 @@ body {
     max-width: 560px;
   }
 
+  .hero-super-kicker {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: var(--klynx-accent);
+    font-weight: 700;
+    animation: slideInLeft 0.6s ease-out;
+  }
+
+  .hero-title-large {
+    font-family: var(--font-space), system-ui, sans-serif;
+    font-size: clamp(3.2rem, 5.5vw, 5.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    font-weight: 800;
+    max-width: 18ch;
+    background: linear-gradient(135deg, #ffffff 0%, #2fd1ff 50%, #33f0c2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin: 8px 0 12px;
+    animation: fadeInUp 0.8s ease-out 0.2s both;
+  }
+
   .hero-title {
     font-family: var(--font-space), system-ui, sans-serif;
     font-size: clamp(2.6rem, 4.4vw, 4.2rem);
@@ -558,6 +582,39 @@ body {
     color: var(--klynx-muted);
     max-width: 560px;
     line-height: 1.7;
+    animation: fadeInUp 0.8s ease-out 0.4s both;
+  }
+
+  .hero-value-props {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+    animation: fadeInUp 0.8s ease-out 0.6s both;
+  }
+
+  .value-prop-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    color: var(--klynx-text);
+    font-weight: 500;
+  }
+
+  .value-prop-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(47, 209, 255, 0.25), rgba(51, 240, 194, 0.2));
+    border: 1px solid var(--klynx-accent);
+    color: var(--klynx-accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
   }
 
   .pill {
@@ -2138,5 +2195,137 @@ body {
 
   .hero {
     padding: 64px 0 56px;
+  }
+}
+
+/* Contact Widget - Floating */
+.contact-widget {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 100;
+  background: linear-gradient(135deg, rgba(12, 21, 40, 0.95), rgba(15, 27, 51, 0.92));
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(47, 209, 255, 0.3);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(5, 10, 24, 0.7),
+              0 0 0 1px rgba(47, 209, 255, 0.1) inset;
+  max-width: 320px;
+  animation: slideInRight 0.6s ease-out;
+}
+
+.contact-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.contact-widget-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(47, 209, 255, 0.25), rgba(51, 240, 194, 0.2));
+  border: 1px solid var(--klynx-accent);
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+}
+
+.contact-widget-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--klynx-text);
+}
+
+.contact-widget-subtitle {
+  font-size: 0.85rem;
+  color: var(--klynx-muted);
+}
+
+.contact-widget-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contact-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(47, 209, 255, 0.05);
+  border: 1px solid rgba(47, 209, 255, 0.15);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.contact-widget-item:hover {
+  background: rgba(47, 209, 255, 0.12);
+  border-color: rgba(47, 209, 255, 0.3);
+  transform: translateX(-4px);
+}
+
+.contact-widget-item-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.contact-widget-item-text {
+  font-size: 0.9rem;
+  color: var(--klynx-text);
+  font-weight: 500;
+}
+
+.contact-widget-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(47, 209, 255, 0.1);
+  color: var(--klynx-muted);
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.contact-widget-close:hover {
+  background: rgba(47, 209, 255, 0.2);
+  color: var(--klynx-text);
+}
+
+.contact-widget.hidden {
+  transform: translateX(400px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Improved logo positioning */
+.logo-frame {
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.logo-frame:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .contact-widget {
+    bottom: 16px;
+    right: 16px;
+    max-width: 280px;
+    padding: 20px;
+  }
+
+  .hero-title-large {
+    font-size: clamp(2.4rem, 7vw, 3.8rem);
   }
 }
