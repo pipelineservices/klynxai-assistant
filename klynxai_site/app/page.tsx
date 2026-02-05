@@ -1,4 +1,7 @@
+'use client';
+
 import Image from "next/image";
+import { useState } from "react";
 import klynxLogo from "../public/klynx-logo.png";
 
 const navItems = [
@@ -181,7 +184,27 @@ const testimonials = [
   },
 ];
 
+const securityBadges = [
+  { name: "SOC 2 Type II", icon: "🔒", description: "Security certified" },
+  { name: "ISO 27001", icon: "🛡️", description: "Information security" },
+  { name: "GDPR", icon: "🇪🇺", description: "EU compliant" },
+  { name: "HIPAA", icon: "🏥", description: "Healthcare ready" },
+];
+
 export default function Home() {
+  const [aiDecisions, setAiDecisions] = useState(100);
+  const [reviewTime, setReviewTime] = useState(2);
+  const [hourlyRate, setHourlyRate] = useState(150);
+
+  // Calculate ROI
+  const decisionsPerYear = aiDecisions * 365;
+  const hoursPerYear = (reviewTime * decisionsPerYear) / 60;
+  const currentCost = hoursPerYear * hourlyRate;
+  const dragonCost = 50000; // Annual Dragon cost (example)
+  const timeSavings = 0.8; // 80% time reduction
+  const savings = currentCost * timeSavings - dragonCost;
+  const roi = ((savings / dragonCost) * 100).toFixed(0);
+
   return (
     <div className="bg-surface">
       <div className="hero-glow" id="home" />
@@ -441,6 +464,109 @@ export default function Home() {
                   <div className="comparison-benefit">{row.benefit}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section section-contrast" id="roi-calculator">
+          <div className="container">
+            <p className="eyebrow">ROI Calculator</p>
+            <h2 className="section-title">Calculate Your Savings</h2>
+            <p className="section-lead">See how much Dragon can save your organization</p>
+
+            <div className="roi-calculator">
+              <div className="roi-inputs">
+                <div className="roi-input-group">
+                  <label htmlFor="aiDecisions">AI Decisions Per Day</label>
+                  <input
+                    id="aiDecisions"
+                    type="number"
+                    value={aiDecisions}
+                    onChange={(e) => setAiDecisions(Number(e.target.value))}
+                    min="1"
+                    max="10000"
+                  />
+                </div>
+                <div className="roi-input-group">
+                  <label htmlFor="reviewTime">Manual Review Time (minutes)</label>
+                  <input
+                    id="reviewTime"
+                    type="number"
+                    value={reviewTime}
+                    onChange={(e) => setReviewTime(Number(e.target.value))}
+                    min="1"
+                    max="60"
+                  />
+                </div>
+                <div className="roi-input-group">
+                  <label htmlFor="hourlyRate">Average Hourly Rate ($)</label>
+                  <input
+                    id="hourlyRate"
+                    type="number"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(Number(e.target.value))}
+                    min="50"
+                    max="500"
+                  />
+                </div>
+              </div>
+
+              <div className="roi-results">
+                <div className="roi-result-card">
+                  <div className="roi-result-label">Annual Cost Without Dragon</div>
+                  <div className="roi-result-value">${currentCost.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                </div>
+                <div className="roi-result-card highlight">
+                  <div className="roi-result-label">Annual Savings With Dragon</div>
+                  <div className="roi-result-value">${Math.max(0, savings).toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                </div>
+                <div className="roi-result-card">
+                  <div className="roi-result-label">ROI</div>
+                  <div className="roi-result-value">{Math.max(0, Number(roi))}%</div>
+                </div>
+                <div className="roi-result-card">
+                  <div className="roi-result-label">Time Saved Per Year</div>
+                  <div className="roi-result-value">{(hoursPerYear * timeSavings).toLocaleString('en-US', {maximumFractionDigits: 0})} hours</div>
+                </div>
+              </div>
+
+              <div className="roi-cta">
+                <p>💡 Based on 80% reduction in manual review time</p>
+                <a href="#cta" className="btn-primary">Start Your Free Trial</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="security">
+          <div className="container">
+            <p className="eyebrow">Security & Compliance</p>
+            <h2 className="section-title">Enterprise-Grade Security</h2>
+            <p className="section-lead">Trusted by regulated industries worldwide</p>
+
+            <div className="security-badges-grid">
+              {securityBadges.map((badge) => (
+                <div key={badge.name} className="security-badge">
+                  <div className="security-badge-icon">{badge.icon}</div>
+                  <div className="security-badge-name">{badge.name}</div>
+                  <div className="security-badge-desc">{badge.description}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="security-features">
+              <div className="security-feature">
+                <h3>🔐 Data Encryption</h3>
+                <p>End-to-end encryption for all data in transit and at rest</p>
+              </div>
+              <div className="security-feature">
+                <h3>🏢 On-Premise Option</h3>
+                <p>Deploy Dragon in your own infrastructure for maximum control</p>
+              </div>
+              <div className="security-feature">
+                <h3>📊 Regular Audits</h3>
+                <p>Third-party security audits and penetration testing</p>
+              </div>
             </div>
           </div>
         </section>
