@@ -88,27 +88,34 @@ export default function Home() {
               </div>
             </div>
             <div className="hero-visual">
-              <div className="hero-visual-shell">
-                <div className="hero-logo-badge">
-                  <Image src={klynxLogo} alt="Klynx AI" width={72} height={72} />
-                </div>
-                <div className="hero-panel">
-                  <div className="hero-panel-grid">
-                    {problemItems.map((item) => (
-                      <div key={item} className="hero-panel-card">
-                        <div className="hero-panel-icon" />
-                        <div>
-                          <h3>{item}</h3>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="hero-panel-summary">
-                    <p className="text-sm uppercase tracking-[0.28em]">Dragon by Klynx AI</p>
-                    <h3>AI that acts — only when allowed.</h3>
+              <div className="hero-visual-shell nsmart-panel">
+                <div className="pattern-grid" aria-hidden="true" />
+                <div className="pattern-node node-top" aria-hidden="true" />
+                <div className="pattern-node node-bottom" aria-hidden="true" />
+                <div className="pattern-card card-one">
+                  <div className="pattern-icon" />
+                  <div>
+                    <h3>Accountability</h3>
                   </div>
                 </div>
-                <div className="hero-visual-overlay" aria-hidden="true" />
+                <div className="pattern-card card-two">
+                  <div className="pattern-icon" />
+                  <div>
+                    <h3>Approval workflows</h3>
+                  </div>
+                </div>
+                <div className="pattern-card card-three">
+                  <div className="pattern-icon" />
+                  <div>
+                    <h3>Policy enforcement</h3>
+                  </div>
+                </div>
+                <div className="pattern-card card-four">
+                  <div className="pattern-icon" />
+                  <div>
+                    <h3>Audit trails</h3>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
