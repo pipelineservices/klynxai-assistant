@@ -267,6 +267,125 @@ body {
     padding: 64px 0 40px;
   }
 
+  /* Metrics Section */
+  .metrics-section {
+    padding: 60px 0 80px;
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(180deg,
+      rgba(5, 11, 27, 0) 0%,
+      rgba(7, 15, 35, 0.4) 50%,
+      rgba(5, 11, 27, 0) 100%);
+  }
+
+  .metrics-kicker {
+    text-align: center;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(47, 209, 255, 0.7);
+    margin-bottom: 40px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 32px;
+    margin-bottom: 48px;
+  }
+
+  .metric-card {
+    text-align: center;
+    padding: 32px 24px;
+    background: linear-gradient(135deg,
+      rgba(15, 27, 51, 0.6),
+      rgba(12, 21, 40, 0.5));
+    border: 1px solid rgba(47, 209, 255, 0.2);
+    border-radius: 20px;
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(47, 209, 255, 0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .metric-card:hover {
+    border-color: rgba(47, 209, 255, 0.5);
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(47, 209, 255, 0.15);
+  }
+
+  .metric-card:hover::before {
+    opacity: 1;
+  }
+
+  .metric-value {
+    font-family: var(--font-space), system-ui, sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #2fd1ff, #33f0c2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+
+  .metric-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #edf3ff;
+    margin-bottom: 6px;
+  }
+
+  .metric-sublabel {
+    font-size: 0.85rem;
+    color: rgba(230, 244, 247, 0.6);
+    line-height: 1.4;
+  }
+
+  .trusted-by {
+    text-align: center;
+    padding-top: 40px;
+    border-top: 1px solid rgba(47, 209, 255, 0.15);
+  }
+
+  .trusted-label {
+    font-size: 0.9rem;
+    color: rgba(230, 244, 247, 0.7);
+    margin-bottom: 20px;
+  }
+
+  .trusted-companies {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .trusted-company {
+    font-size: 0.9rem;
+    color: rgba(230, 244, 247, 0.8);
+    padding: 8px 20px;
+    background: rgba(15, 27, 51, 0.4);
+    border: 1px solid rgba(47, 209, 255, 0.2);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .trusted-company:hover {
+    background: rgba(47, 209, 255, 0.1);
+    border-color: rgba(47, 209, 255, 0.4);
+    color: rgba(47, 209, 255, 0.95);
+  }
+
   .hero-grid {
     display: grid;
     gap: 56px;
@@ -537,6 +656,7 @@ body {
     color: #edf3ff;
     line-height: 1.4;
     transition: color 0.3s ease;
+    margin-bottom: 6px;
   }
 
   .pattern-card:hover h3 {
@@ -544,6 +664,13 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  .pattern-card-desc {
+    font-size: 0.85rem;
+    color: rgba(230, 244, 247, 0.7);
+    line-height: 1.5;
+    margin: 0;
   }
 
   .pattern-icon {
@@ -559,6 +686,12 @@ body {
     transition: all 0.4s ease;
   }
 
+  .pattern-icon-emoji {
+    font-size: 1.5rem;
+    position: relative;
+    z-index: 2;
+  }
+
   .pattern-icon::after {
     content: "";
     position: absolute;
@@ -567,6 +700,7 @@ body {
     background: rgba(0, 173, 200, 0.3);
     border-radius: 6px;
     transition: all 0.4s ease;
+    z-index: 1;
   }
 
   /* Remove absolute positioning and add individual card colors */
@@ -864,27 +998,100 @@ body {
     font-size: 0.75rem;
   }
 
+  /* FAQ Section */
+  .faq-grid {
+    display: grid;
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    margin-top: 48px;
+  }
+
+  .faq-item {
+    padding: 28px 32px;
+    background: linear-gradient(135deg,
+      rgba(15, 27, 51, 0.5),
+      rgba(12, 21, 40, 0.4));
+    border: 1px solid rgba(47, 209, 255, 0.15);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+  }
+
+  .faq-item:hover {
+    border-color: rgba(47, 209, 255, 0.4);
+    background: linear-gradient(135deg,
+      rgba(15, 27, 51, 0.65),
+      rgba(12, 21, 40, 0.55));
+    transform: translateX(4px);
+  }
+
+  .faq-question {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #edf3ff;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .faq-answer {
+    font-size: 1rem;
+    color: rgba(230, 244, 247, 0.75);
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* CTA Section */
   .cta {
     padding-top: 64px;
   }
 
   .cta-card {
-    background: rgba(12, 21, 40, 0.85);
-    border: 1px solid rgba(84, 121, 176, 0.25);
+    background: linear-gradient(135deg,
+      rgba(12, 21, 40, 0.92),
+      rgba(15, 27, 51, 0.88));
+    border: 2px solid rgba(47, 209, 255, 0.3);
     border-radius: 28px;
-    padding: 32px;
+    padding: 48px 40px;
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 32px;
     align-items: center;
     justify-content: space-between;
-    box-shadow: var(--klynx-shadow);
+    box-shadow:
+      0 32px 80px rgba(5, 10, 24, 0.6),
+      0 0 0 1px rgba(47, 209, 255, 0.1) inset;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(47, 209, 255, 0.15) 0%, transparent 50%);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .cta-urgency {
+    font-size: 0.95rem;
+    color: rgba(51, 240, 194, 0.9);
+    margin-top: 12px;
+    font-weight: 500;
   }
 
   .cta-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .btn-large {
+    padding: 16px 32px;
+    font-size: 1.05rem;
+    font-weight: 600;
   }
 
   .hero::before {

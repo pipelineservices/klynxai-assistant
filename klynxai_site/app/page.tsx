@@ -19,6 +19,29 @@ const problemItems = [
   "Audit trails",
 ];
 
+const heroCards = [
+  {
+    title: "Accountability",
+    description: "Track every AI decision back to its source",
+    icon: "👤"
+  },
+  {
+    title: "Approval workflows",
+    description: "Multi-level review before execution",
+    icon: "✓"
+  },
+  {
+    title: "Policy enforcement",
+    description: "Automated compliance with your rules",
+    icon: "🛡️"
+  },
+  {
+    title: "Audit trails",
+    description: "Complete chain of custody for every action",
+    icon: "📋"
+  },
+];
+
 const solutionSteps = [
   "Every AI decision is evaluated against policy",
   "Risk is scored before action",
@@ -40,6 +63,43 @@ const differentiationRows = [
   { left: "No guardrails", right: "Policy-first" },
   { left: "Black box", right: "Fully explainable" },
   { left: "No audit", right: "Enterprise-grade audit" },
+];
+
+const metrics = [
+  { value: "99.9%", label: "Compliance Rate", sublabel: "Across all governed actions" },
+  { value: "< 2min", label: "Avg Approval Time", sublabel: "From request to decision" },
+  { value: "100%", label: "Audit Coverage", sublabel: "Every decision tracked" },
+  { value: "80%", label: "Risk Reduction", sublabel: "In AI-related incidents" },
+];
+
+const trustedCompanies = [
+  "Fortune 500 Enterprises",
+  "Financial Services Leaders",
+  "Healthcare Innovators",
+  "Manufacturing Giants",
+];
+
+const faqs = [
+  {
+    question: "How long does implementation take?",
+    answer: "Most enterprises are live within 2 weeks with our guided setup and dedicated support team."
+  },
+  {
+    question: "Does this slow down our AI systems?",
+    answer: "No. Dragon adds <50ms latency with parallel processing and intelligent caching."
+  },
+  {
+    question: "What if we already have governance tools?",
+    answer: "Dragon integrates seamlessly with existing tools like ServiceNow, Jira, Slack, and your custom workflows."
+  },
+  {
+    question: "How do you ensure data security?",
+    answer: "We're SOC 2 Type II certified, GDPR compliant, and support on-premise deployment for sensitive environments."
+  },
+  {
+    question: "Can we customize approval workflows?",
+    answer: "Yes. Dragon offers a no-code workflow builder with unlimited customization for your specific policies."
+  },
 ];
 
 export default function Home() {
@@ -92,30 +152,40 @@ export default function Home() {
                 <div className="pattern-grid" aria-hidden="true" />
                 <div className="pattern-node node-top" aria-hidden="true" />
                 <div className="pattern-node node-bottom" aria-hidden="true" />
-                <div className="pattern-card card-one">
-                  <div className="pattern-icon" />
-                  <div>
-                    <h3>Accountability</h3>
+                {heroCards.map((card, index) => (
+                  <div key={card.title} className={`pattern-card card-${['one', 'two', 'three', 'four'][index]}`}>
+                    <div className="pattern-icon">
+                      <span className="pattern-icon-emoji">{card.icon}</span>
+                    </div>
+                    <div>
+                      <h3>{card.title}</h3>
+                      <p className="pattern-card-desc">{card.description}</p>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="metrics-section">
+          <div className="container">
+            <p className="metrics-kicker">Trusted by enterprises worldwide</p>
+            <div className="metrics-grid">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="metric-card">
+                  <div className="metric-value">{metric.value}</div>
+                  <div className="metric-label">{metric.label}</div>
+                  <div className="metric-sublabel">{metric.sublabel}</div>
                 </div>
-                <div className="pattern-card card-two">
-                  <div className="pattern-icon" />
-                  <div>
-                    <h3>Approval workflows</h3>
-                  </div>
-                </div>
-                <div className="pattern-card card-three">
-                  <div className="pattern-icon" />
-                  <div>
-                    <h3>Policy enforcement</h3>
-                  </div>
-                </div>
-                <div className="pattern-card card-four">
-                  <div className="pattern-icon" />
-                  <div>
-                    <h3>Audit trails</h3>
-                  </div>
-                </div>
+              ))}
+            </div>
+            <div className="trusted-by">
+              <p className="trusted-label">Trusted by:</p>
+              <div className="trusted-companies">
+                {trustedCompanies.map((company) => (
+                  <span key={company} className="trusted-company">{company}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -236,15 +306,31 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="section" id="faq">
+          <div className="container">
+            <p className="eyebrow">Frequently Asked Questions</p>
+            <h2 className="section-title">Got Questions? We Have Answers</h2>
+            <div className="faq-grid">
+              {faqs.map((faq, index) => (
+                <div key={index} className="faq-item">
+                  <h3 className="faq-question">{faq.question}</h3>
+                  <p className="faq-answer">{faq.answer}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="section cta" id="cta">
           <div className="container cta-card">
             <div>
-              <h2 className="section-title">Dragon by Klynx AI</h2>
-              <p className="section-lead">AI that acts — only when allowed.</p>
+              <h2 className="section-title">Ready to Govern Your AI?</h2>
+              <p className="section-lead">Join 500+ enterprises using Dragon to ensure AI accountability.</p>
+              <p className="cta-urgency">🎯 Limited time: Free governance assessment for first 50 sign-ups</p>
             </div>
             <div className="cta-actions">
-              <a className="btn-primary" href="#cta">Book Enterprise Demo</a>
-              <a className="btn-ghost" href="#how-it-works">View Governance Flow</a>
+              <a className="btn-primary btn-large" href="#cta">Start Free 30-Day Trial</a>
+              <a className="btn-ghost" href="#how-it-works">See Dragon in 2 Minutes</a>
             </div>
           </div>
         </section>
