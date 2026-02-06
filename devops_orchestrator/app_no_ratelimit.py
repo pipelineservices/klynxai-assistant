@@ -1,3 +1,8 @@
+"""
+Temporary Dragon app without rate limiting for local testing
+Use this if slowapi installation fails on Windows
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -9,9 +14,6 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 from devops_orchestrator import settings
 from devops_orchestrator import audit
@@ -28,14 +30,9 @@ from devops_orchestrator.models import (
 )
 from devops_orchestrator.exceptions import DevOpsException
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
-
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# CORS middleware - TODO: Restrict in production
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,11 +47,8 @@ async def add_correlation_id(request: Request, call_next):
     """Add correlation ID to all requests for distributed tracing"""
     correlation_id = request.headers.get("X-Correlation-ID", str(uuid4()))
     request.state.correlation_id = correlation_id
-
-    # Add to audit context
     response = await call_next(request)
     response.headers["X-Correlation-ID"] = correlation_id
-
     return response
 
 
@@ -86,7 +80,7 @@ def health():
     """Enhanced health check with dependency status"""
     health_status = {
         "status": "healthy",
-        "version": "0.1.0",
+        "version": "0.1.0-no-ratelimit",
         "service": settings.APP_NAME,
         "dependencies": {}
     }
@@ -101,7 +95,6 @@ def health():
 
     # Check Incident API
     try:
-        # Just checking if we can construct the URL
         incident_url = f"{settings.INCIDENT_API_BASE_URL}/health"
         health_status["dependencies"]["incident_api"] = "healthy"
     except Exception as e:
@@ -311,8 +304,8 @@ def _open_autofix_pr(state: dict, approver: str, justification: str) -> dict:
     return {"ok": bool(pr_url), "pr_url": pr_url or ""}
 
 
+# NOTE: No rate limiting on these endpoints in this version
 @app.post("/api/generate", response_model=GenerateResponse)
-@limiter.limit("50/hour")  # Limit code generation to prevent abuse
 def generate(request: Request, req: GenerateRequest):
     gate = _gate_decision(
         title="Auto code generation",
@@ -330,7 +323,6 @@ def generate(request: Request, req: GenerateRequest):
 
 
 @app.post("/api/pr", response_model=PullRequestResponse)
-@limiter.limit("100/hour")  # Limit PR creation
 def create_pr(request: Request, req: PullRequestRequest):
     gate = _gate_decision(
         title="Auto PR creation",
@@ -470,7 +462,6 @@ async def github_webhook(request: Request):
 
 
 @app.post("/api/approvals")
-@limiter.limit("20/hour")  # Strict limit on approvals to prevent abuse
 def approvals(request: Request, payload: ApprovalPayload):
     audit.write_event("approval.received", payload.incident_id, {"decision": payload.decision_id})
     if not payload.approved:
@@ -504,5 +495,5 @@ except Exception as e:
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run("devops_orchestrator.app:app", host=settings.HOST, port=settings.PORT, log_level="info")
+    print("⚠ Running without rate limiting (slowapi not available)")
+    uvicorn.run("devops_orchestrator.app_no_ratelimit:app", host=settings.HOST, port=settings.PORT, log_level="info")
