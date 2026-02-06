@@ -220,11 +220,11 @@
 /* Empty State */
 .empty-state {
   text-align: center;
-  padding: 80px 20px;
+  padding: 60px 20px;
   background: rgba(15, 27, 51, 0.4);
   border: 2px dashed rgba(47, 209, 255, 0.2);
   border-radius: 20px;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 
 .empty-state-icon {
